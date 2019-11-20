@@ -13,7 +13,7 @@
 #include "Rambo_construction.h"
 #include "utils.h"
 #include "constants.h"
-#include "intbitArray.h"
+#include "bitArray.h"
 #include <set>
 #include <iterator>
 #include <bitset>
@@ -125,7 +125,7 @@ void RAMBO::insertion (std::string setID, std::vector<std::string> keys){
 }
 
 // given inverted index type arrangement, kmer;files;files;..
-void RAMBO::insertion2 (std::vector<string> alllines, int V; int merge){
+void RAMBO::insertion2 (std::vector<string> alllines, int V, int mr){
   // V = 10; // multiplicity = 10
   // merge = 5; //merging 5 rambo
 
@@ -134,16 +134,14 @@ void RAMBO::insertion2 (std::vector<string> alllines, int V; int merge){
   for(std::size_t i=0; i<alllines.size(); ++i){
     char d = ';';
     std::vector<string>KeySets =  line2array(alllines[i], d);//sets for a key
-    vector<uint> temp = myhash(to_string(KeySets[0]).c_str(), to_string(KeySets[0]).size() , k, range);// i is the key
+    vector<uint> temp = myhash(KeySets[0].c_str(), KeySets[0].size() , k, range);// i is the key
 
-    for (uint bo = 1; bo<merge+1; bo++){
-        std::vector<string>KeySet = line2array(KeySets[bo], ',');
-        for (uint j = 0; j<V; j++){
-          vector<uint> hashvals = RAMBO::hashfunc(KeySet[j], KeySet[j].size()); // R hashvals
-          for(int r=0; r<R; r++){
-            Rambo_array[hashvals[r] + B*r]->insert(temp);
-          }
-        }
+    std::vector<string>KeySet = line2array(KeySets[mr], ',');
+    for (int j = 0; j<V; j++){
+      vector<uint> hashvals = RAMBO::hashfunc(KeySet[j], KeySet[j].size()); // R hashvals
+      for(int r=0; r<R; r++){
+        Rambo_array[hashvals[r] + B*r]->insert(temp);
+      }
     }
   }
 }
@@ -210,7 +208,7 @@ void RAMBO::deserializeRAMBO(vector<string> dir){
   for(int b=0; b<B; b++){
     for(int r=0; r<R; r++){
       vector<string> br;
-     	for (int j=0; j<dir.size(); j++){
+     	for (uint j=0; j<dir.size(); j++){
 	  br.push_back(dir[j] + to_string(b) + "_" + to_string(r) + ".txt");
 	}
       Rambo_array[b + B*r]->deserializeBF(br);

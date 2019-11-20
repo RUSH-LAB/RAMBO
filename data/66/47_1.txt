@@ -1,0 +1,2 @@
+wget ftp://ftp.ebi.ac.uk/pub/software/bigsi/nat_biotech_2018/ctx/ERR689/ERR689480/cleaned/ERR689480.ctx
+wget ftp://ftp.ebi.ac.uk/pub/software/bigsi/nat_biotech_2018/ctx/SRR219/SRR2193803/cleaned/SRR2193803.ctx

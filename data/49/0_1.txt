@@ -1,0 +1,6 @@
+wget ftp://ftp.ebi.ac.uk/pub/software/bigsi/nat_biotech_2018/ctx/SRR319/SRR3194574/cleaned/SRR3194574.ctx
+wget ftp://ftp.ebi.ac.uk/pub/software/bigsi/nat_biotech_2018/ctx/SRR165/SRR1655865/cleaned/SRR1655865.ctx
+wget ftp://ftp.ebi.ac.uk/pub/software/bigsi/nat_biotech_2018/ctx/SRR116/SRR1160052/cleaned/SRR1160052.ctx
+wget ftp://ftp.ebi.ac.uk/pub/software/bigsi/nat_biotech_2018/ctx/ERR386/ERR386774/cleaned/ERR386774.ctx.bz2
+wget ftp://ftp.ebi.ac.uk/pub/software/bigsi/nat_biotech_2018/ctx/ERR516/ERR516752/cleaned/ERR516752.ctx
+wget ftp://ftp.ebi.ac.uk/pub/software/bigsi/nat_biotech_2018/ctx/SRR163/SRR1636923/cleaned/SRR1636923.ctx

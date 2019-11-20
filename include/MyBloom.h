@@ -3,7 +3,7 @@
 #include <vector>
 #include "constants.h"
 #include <bitset>
-#include "intbitArray.h"
+#include "bitArray.h"
 
 std::vector<uint> myhash(std::string key, int len, int k, int range);
 

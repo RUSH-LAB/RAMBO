@@ -5,7 +5,7 @@
 #include <string>
 #include <bitset>
 #include "constants.h"
-#include "intbitArray.h"
+#include "bitArray.h"
 
 
 // vector<uint> hashfunc( void* key, int len, int R, int B){
@@ -24,7 +24,7 @@ class RAMBO{
         void createMetaRambo(int K, bool verbose);
         void serializeRAMBO(std::string dir);
         void deserializeRAMBO(std::vector<std::string> dir);
-        void RAMBO::insertion2 (std::vector<string> alllines, int V; int merge);
+        void insertion2 (std::vector<std::string> alllines, int V, int mr);
 
         int R ;
         int B;

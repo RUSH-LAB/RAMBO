@@ -9,7 +9,7 @@ TARGET   := program
 SRC      :=                      \
 	 $(wildcard src/MurmurHash3.cpp)   \
 	 $(wildcard src/Rambo_construction.cpp) \
-	 $(wildcard src/intbitArray.cpp) \
+	 $(wildcard src/bitArray.cpp) \
    $(wildcard src/MyBloom.cpp)   \
 	 $(wildcard src/utils.cpp)   \
 	 $(wildcard src/main.cpp)   \

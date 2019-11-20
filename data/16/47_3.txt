@@ -1,0 +1,2 @@
+cortexpy view graph ERR142188.ctx > inflated/ERR142188.out
+cortexpy view graph ERR1712830.ctx > inflated/ERR1712830.out

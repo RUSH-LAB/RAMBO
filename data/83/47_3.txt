@@ -1,0 +1,4 @@
+cortexpy view graph SRR1198971.ctx > inflated/SRR1198971.out
+cortexpy view graph SRR1592202.ctx > inflated/SRR1592202.out
+cortexpy view graph SRR1145593.ctx > inflated/SRR1145593.out
+cortexpy view graph SRR2989010.ctx > inflated/SRR2989010.out

@@ -12,16 +12,13 @@
 #include "Rambo_construction.h"
 #include "ArrayOfBF.h"
 #include "utils.h"
-#include "mybitarray.h"
 #include "constants.h"
-#include "intbitArray.h"
-
+#include "bitArray.h"
 
 using namespace std;
 
 int main(int argc, char** argv){
 
-//RAMBO number is :
 string job(argv[1]);
 
 bool insert  = false;
@@ -39,7 +36,6 @@ int K = Ki; // total number of sets
 float fp_ops;
 float ins_time;
 float query_time;
-//cout<<"here"<<endl;
 
 // constructor
 RAMBO myRambo(n_perSet, FPR, R_all, B_all, K);
@@ -49,13 +45,11 @@ myRambo.createMetaRambo (K, false);
 cout<<"created meta"<<endl;
 
 //insert itno RAMBO
-
 string SerOpFile ="results/RAMBO_Ser" + job + '/';
 
 if (deser){
   vector<string> SerOpFile2;
-  SerOpFile2.push_back("/home/gg29/BIG_exp/FinalOps/RAMBO_Ser5/");
-  SerOpFile2.push_back("/home/gg29/BIG_exp/FinalOps/RAMBO_Ser4/");
+  SerOpFile2.push_back("results/RAMBO_Ser4/"); // mutliple files can be pushed here
 
   cout<<"deser starting"<<endl;
   myRambo.deserializeRAMBO(SerOpFile2);
@@ -86,7 +80,7 @@ if (insert == true){
       }
 
       myRambo.insertion(setID[0], keys);
-      
+
     }
     chrono::time_point<chrono::high_resolution_clock> t4 = chrono::high_resolution_clock::now();
     cout << chrono::duration_cast<chrono::nanoseconds>(t4-t3).count()/1000000000.0 << "sec\n";
@@ -116,7 +110,7 @@ if(test){
     testKeys = getRandomTestKeys(keysize, 1000);
     cout<<"loaded keys"<<endl;
     //testKeys = getctxdata("data/SRR1792494.out");
-    float fp=0, tot=0;
+    float fp=0;
     std::ofstream FPtestFile;
     FPtestFile.open("FPtestFile5+4.txt");
     // #pragma omp parallel for

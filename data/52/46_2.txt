@@ -1,0 +1,6 @@
+bzip2 -d ERR1013693.ctx.bz2
+bzip2 -d ERR331310.ctx.bz2
+bzip2 -d ERR124501.ctx.bz2
+bzip2 -d ERR119455.ctx.bz2
+bzip2 -d ERR177148.ctx.bz2
+bzip2 -d ERR1023498.ctx.bz2

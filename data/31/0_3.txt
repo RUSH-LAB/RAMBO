@@ -1,0 +1,14 @@
+cortexpy view graph ERR949010.ctx > inflated/ERR949010.out
+cortexpy view graph SRR3238340.ctx > inflated/SRR3238340.out
+cortexpy view graph ERR1243067.ctx > inflated/ERR1243067.out
+cortexpy view graph SRR1710070.ctx > inflated/SRR1710070.out
+cortexpy view graph ERR033937.ctx > inflated/ERR033937.out
+cortexpy view graph SRR1967577.ctx > inflated/SRR1967577.out
+cortexpy view graph SRR2968188.ctx > inflated/SRR2968188.out
+cortexpy view graph ERR137211.ctx > inflated/ERR137211.out
+cortexpy view graph ERR594184.ctx > inflated/ERR594184.out
+cortexpy view graph SRR3344980.ctx > inflated/SRR3344980.out
+cortexpy view graph SRR5125930.ctx > inflated/SRR5125930.out
+cortexpy view graph ERR1349291.ctx > inflated/ERR1349291.out
+cortexpy view graph SRR4415944.ctx > inflated/SRR4415944.out
+cortexpy view graph SRR798411.ctx > inflated/SRR798411.out

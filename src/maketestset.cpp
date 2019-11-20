@@ -12,9 +12,9 @@
 #include "Rambo_construction.h"
 #include "ArrayOfBF.h"
 #include "utils.h"
-#include "mybitarray.h"
+// #include "mybitarray.h"
 #include "constants.h"
-#include "intbitArray.h"
+#include "bitArray.h"
 
 
 using namespace std;

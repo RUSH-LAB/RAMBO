@@ -14,7 +14,7 @@
 #include "Rambo_construction.h"
 #include "utils.h"
 #include <bitset>
-#include "intbitArray.h"
+#include "bitArray.h"
 
 using namespace std;
 set<int> takeIntrsec(set<int>* setArray){

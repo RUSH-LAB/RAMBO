@@ -146,7 +146,7 @@ return s;
 
 std::map<std::string, vector<int>> makeInvIndex(int n, vector<std::string> foldernames){
   std::map<std::string, vector<int>> m;
-  for (int f=0; f<foldernames.size(); f++){
+  for (uint f=0; f<foldernames.size(); f++){
     string foldername = foldernames[f];
     for (int batch=0; batch<47; batch++){
   	string dataPath = foldername + to_string(batch)+ "_indexed.txt";
@@ -171,8 +171,8 @@ std::map<std::string, vector<int>> makeInvIndex(int n, vector<std::string> folde
 		}
     	   }
     	  else{
-		
-    		for (int i =0; i<keys.size(); i++){
+
+    		for (uint i =0; i<keys.size(); i++){
       		   if (m.find(keys[i]) != m.end()){
         	     std::cout << "map contains the key!\n";
         	     m[keys[i]].push_back(std::stoi(setID[0]));
