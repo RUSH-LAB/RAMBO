@@ -24,7 +24,7 @@ It downloads data files in RAMBO/data/0/inflated (ensure this path is present be
 
 Insertion in RAMBO:
 
-Flags in RAMBO/src/main.cpp
+Flags in RAMBO/src/main.cpp 
 ```
 bool insert  = true;
 bool ser = true;
@@ -36,7 +36,7 @@ cd RAMBO
 make
 ./build/program 0
 ```
-To test RAMBO keep flags in RAMBO/src/main.cpp
+To test RAMBO keep the flags in RAMBO/src/main.cpp as
 
 ```
 bool insert  = false;
