@@ -13,3 +13,41 @@ This code is the implementation of:
 [https://arxiv.org/abs/1910.02611](https://arxiv.org/abs/1910.02611)
 for gene sequence search.
 
+For experiment we use  the  Whole Genome Sequence (WGS) dataset as  used by [1].  It  is  bacterial,  viral  and
+parasitic WGS datasets in the European Nucleotide Archive (ENA) as of December 2016. The total size of data is ~170 TB. It is divided into 100 parts and indexed randomly. 
+
+To download dataset run the script RAMBO/data/0/download.sh 
+```
+sh download.sh
+```
+It downloads data files in RAMBO/data/0/inflated (ensure this path is present before downloading). Once it downloads the batch of 100 data files. 
+
+Insertion in RAMBO:
+
+Flags in RAMBO/src/main.cpp
+```
+bool insert  = true;
+bool ser = true;
+bool test = false;
+bool deser = false;
+```
+```
+cd RAMBO
+make
+./build/program 0
+```
+To test RAMBO keep flags in RAMBO/src/main.cpp
+
+```
+bool insert  = false;
+bool ser = false;
+bool test = true;
+bool deser = true;
+```
+and run the code
+```
+cd RAMBO
+make
+./build/program 0
+```
+
