@@ -8,6 +8,7 @@ jobs=46
 SIZE=$(du . | cut -f1)
 echo $SIZE
 
+mkdir inflated
 for cnt in $(seq 0 $jobs)
 do
   echo"$cnt"
