@@ -16,6 +16,26 @@ for gene sequence search.
 For experiment we use  the  Whole Genome Sequence (WGS) dataset as  used by [1].  It  is  bacterial,  viral  and
 parasitic WGS datasets in the European Nucleotide Archive (ENA) as of December 2016. The total size of data is ~170 TB. It is divided into 100 parts and indexed randomly. 
 
+Requirements:
+1) GCC version >= 6.2.0
+2) Install latest GNU parallel
+OS X:
+```
+brew install parallel
+```
+Debian/Ubuntu:
+```
+sudo apt-get install parallel
+```
+
+RedHat/CentOS:
+```
+sudo yum install parallel
+```
+3) Install wget
+4) Install coretextpy
+Refer to this installation [document] (https://cortexpy.readthedocs.io/en/latest/overview.html#installation)
+
 To download dataset run the script RAMBO/data/0/download.sh 
 ```
 sh download.sh
