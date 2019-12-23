@@ -32,9 +32,12 @@ RedHat/CentOS:
 ```
 sudo yum install parallel
 ```
-3) Install wget
+3) Install wget and bzip2
 4) Install cortexpy
 Refer to this installation [document] (https://cortexpy.readthedocs.io/en/latest/overview.html#installation)
+
+5) Disk memory > 2.5 TB
+6) RAM > 160 GB
 
 To download dataset run the script RAMBO/data/0/download.sh 
 ```
