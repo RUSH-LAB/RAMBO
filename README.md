@@ -33,7 +33,7 @@ RedHat/CentOS:
 sudo yum install parallel
 ```
 3) Install wget
-4) Install coretextpy
+4) Install cortexpy
 Refer to this installation [document] (https://cortexpy.readthedocs.io/en/latest/overview.html#installation)
 
 To download dataset run the script RAMBO/data/0/download.sh 
