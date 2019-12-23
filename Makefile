@@ -1,7 +1,7 @@
 # declare variables
 
 CXX      := g++
-CXXFLAGS := -Wall -fopenmp -O2
+CXXFLAGS := -Wall -fopenmp -std=c++11 -O2
 INCLUDE  := -Iinclude/
 BUILD    := ./build
 TARGET   := program
