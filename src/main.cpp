@@ -54,7 +54,7 @@ int main(int argc, char** argv){
     bool test = false;
     bool deser = false;
 
-    int n_perSet = 5000000; //cardinality of each set
+    int n_perSet = 500000000; //cardinality of each set
     float FPR = 0.01;
     int R_all = 5;
     int B_all = 500;
