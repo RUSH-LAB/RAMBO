@@ -3,11 +3,9 @@
 #include <cstring>
 #include <chrono>
 #include <vector>
-#include "MyBloom.h"
 #include <math.h>
+#include "MyBloom.h"
 #include "constants.h"
-#include <bitset>
-#include "bitArray.h"
 
 using namespace std;
 
@@ -23,33 +21,32 @@ vector<uint> myhash( std::string key, int len, int k, int range){
   return hashvals;
 }
 
-BloomFiler::BloomFiler(int sz, float FPR, int k){
-      p = FPR;
-      k = k; //number of hash
-      m_bits = new bitArray(sz);
-      }
+BloomFilter::BloomFilter(int sz, float FPR, int _k) : p(FPR), k(_k){
+      this->m_bits = new bitArray(sz);
+}
 
-void BloomFiler::insert(vector<uint> a){
+void BloomFilter::insert(vector<uint> a){
   int N = a.size();
   for (int n =0 ; n<N; n++){
-    m_bits->SetBit(a[n]);
+    this->m_bits->bitIt[a[n]] = bit::bit1;
   }
 }
 
-bool BloomFiler::test(vector<uint> a){
+//TODO theres gotta be a better way for this
+bool BloomFilter::test(vector<uint> a) {
   int N = a.size();
   for (int n =0 ; n<N; n++){
-      if (!m_bits->TestBit(a[n])){
+      if (this->m_bits->bitIt[a[n]] == bit::bit0){
         return false;
       }
   }
   return true;
 }
 
-void BloomFiler::serializeBF(string BF_file){
-  m_bits->serializeBitAr(BF_file);
+void BloomFilter::serializeBF(fs::path BF_file){
+  this->m_bits->serializeBitAr(BF_file);
 }
 
-void BloomFiler::deserializeBF(vector<string> BF_file){
-  m_bits->deserializeBitAr(BF_file);
+void BloomFilter::deserializeBF(vector<fs::path> BF_file){
+  this->m_bits->deserializeBitAr(BF_file);
 }

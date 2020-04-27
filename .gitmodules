@@ -1,0 +1,9 @@
+[submodule "ext/spdlog"]
+	path = ext/spdlog
+	url = https://github.com/gabime/spdlog
+[submodule "ext/CLI11"]
+	path = ext/CLI11
+	url = https://github.com/CLIUtils/CLI11
+[submodule "ext/bit-algorithms"]
+	path = ext/bit-algorithms
+	url = https://github.com/vreverdy/bit-algorithms

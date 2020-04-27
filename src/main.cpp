@@ -7,137 +7,160 @@
 #include <string.h>
 #include <algorithm>
 #include <chrono>
+#include <list>
+#include <vector>
+#include <filesystem>
+#include "spdlog/spdlog.h"
+#include "CLI/CLI.hpp"
+#include "bitArray.h"
 #include "MyBloom.h"
+#include "ArrayOfBF.h"
 #include "MurmurHash3.h"
 #include "Rambo_construction.h"
-#include "ArrayOfBF.h"
 #include "utils.h"
 #include "constants.h"
-#include "bitArray.h"
 
 using namespace std;
+namespace fs = std::filesystem;
+
 
 int main(int argc, char** argv){
+    CLI::App app{"RAMBO application"};
+    CLI::App* build_sub = app.add_subcommand("build", "Build database");
+    std::vector<fs::path> input_files;
+    fs::path output_dir;
+    build_sub->add_option(
+            "input-files",
+            input_files,
+            "Input files"
+    )->required();
+    build_sub->add_option(
+            "-o,--output",
+            output_dir,
+            "Directory to store serialized output"
+    )->required();
 
-string job(argv[1]);
+    CLI::App* query_sub = app.add_subcommand("query", "Check if query is in database");
+    query_sub->add_option(
+            "input-files",
+            input_files,
+            "Input files"
+    );
 
-bool insert  = false;
-bool ser = false;
-bool test = true;
-bool deser = true;
+    CLI11_PARSE(app, argc, argv);
+    string job = "0";
 
-int n_perSet = 500000000; //cardinality of each set
-float FPR = 0.01;
-int R_all = 5;
-int B_all = 500;
+    bool ser = true;
+    bool test = false;
+    bool deser = false;
 
-int K = Ki; // total number of sets
+    int n_perSet = 5000000; //cardinality of each set
+    float FPR = 0.01;
+    int R_all = 5;
+    int B_all = 500;
 
-float fp_ops;
-float ins_time;
-float query_time;
+    int K = Ki; // total number of sets
 
-// constructor
-RAMBO myRambo(n_perSet, FPR, R_all, B_all, K);
+    float fp_ops;
+    float ins_time;
+    float query_time;
 
-//  details of RAMBO set partitioning
-myRambo.createMetaRambo (K, false);
-cout<<"created meta"<<endl;
+    // constructor
+    RAMBO myRambo(n_perSet, FPR, R_all, B_all, K);
 
-//insert itno RAMBO
-string SerOpFile ="results/RAMBO_Ser" + job + '/';
+    //  details of RAMBO set partitioning
+    myRambo.createMetaRambo(K, false);
+    cout<<"created meta"<<endl;
 
-if (deser){
-  vector<string> SerOpFile2;
-  SerOpFile2.push_back("results/RAMBO_Ser4/"); // mutliple files can be pushed here
+    //insert itno RAMBO
+    string SerOpFile ="results/RAMBO_Ser" + job + '/';
 
-  cout<<"deser starting"<<endl;
-  myRambo.deserializeRAMBO(SerOpFile2);
-  std::cout << "desealized!" << '\n';
-}
+    //if (deser){
+      //vector<string> SerOpFile2;
+      //SerOpFile2.push_back("results/RAMBO_Ser4/"); // mutliple files can be pushed here
 
-if (insert == true){
-  //log files
-  std::ofstream failedFiles;
-  failedFiles.open("logFileB500R5_"+job+".txt");
+      //cout<<"deser starting"<<endl;
+      //myRambo.deserializeRAMBO(SerOpFile2);
+      //std::cout << "desealized!" << '\n';
+    //}
 
-  for (int batch =0; batch<47; batch++){
-    chrono::time_point<chrono::high_resolution_clock> t3 = chrono::high_resolution_clock::now();
+    if (app.got_subcommand("build")) {
+      //log files
+      std::ofstream failedFiles;
+      failedFiles.open("logFileB500R5_"+job+".txt");
 
-    string dataPath = "data/"+ job +"/inflated/" + to_string(batch) + "_indexed.txt";
-    std::vector<string> setIDs = readlines(dataPath, 0);
+      for (std::string input_f: input_files) {
+        auto t3 = chrono::high_resolution_clock::now();
+        std::vector<string> setIDs = readlines(input_f, 0);
 
-    for (uint ss=0; ss<setIDs.size(); ss++){
-      char d = ',';
-      vector<std::string> setID = line2array(setIDs[ss], d);
-      string mainfile = "data/"+ job +"/inflated/" + setID[1]+ ".out";
-      vector<std::string> keys = getctxdata(mainfile);
-      failedFiles<<mainfile<<" : "<<keys.size()<<std::endl;
+        for (uint ss = 0; ss < setIDs.size(); ss++){
+          char d = ',';
+          vector<std::string> setID = line2array(setIDs[ss], d);
+          string mainfile = "data/"+ job +"/inflated/" + setID[1]+ ".out";
+          vector<std::string> keys = getctxdata(mainfile);
+          failedFiles<<mainfile<<" : "<<keys.size()<<std::endl;
 
-      if (keys.size()==0){
-          std::cout<<mainfile<<" does not exists or empty "<<std::endl;
-          failedFiles<<mainfile<<" does not exists or empty "<<std::endl;
+          if (keys.size()==0){
+              std::cout<<mainfile<<" does not exists or empty "<<std::endl;
+              failedFiles<<mainfile<<" does not exists or empty "<<std::endl;
+          }
+          myRambo.insertion(setID[0], keys);
+        }
+        auto t4 = chrono::high_resolution_clock::now();
+        cout << chrono::duration_cast<chrono::nanoseconds>(t4-t3).count()/1000000000.0 << "sec\n";
+        ins_time = (t4-t3).count()/1000000000.0;
+        failedFiles << "insertion time (sec) "<< ins_time << endl;
       }
 
-      myRambo.insertion(setID[0], keys);
-
-    }
-    chrono::time_point<chrono::high_resolution_clock> t4 = chrono::high_resolution_clock::now();
-    cout << chrono::duration_cast<chrono::nanoseconds>(t4-t3).count()/1000000000.0 << "sec\n";
-    ins_time = (t4-t3).count()/1000000000.0;
-    failedFiles<<"insertion time (sec) of 100 files: "<<ins_time<<endl;
-  }
-
-  //serialize myRambo
-  if (ser){
-	cout<<"Serializing RAMBO at: "<<SerOpFile<<endl;
-    myRambo.serializeRAMBO(SerOpFile);
-   for (int kpp=0;kpp<30;kpp++){
-	cout<<"packing: "<<myRambo.Rambo_array[kpp]->m_bits->getcount()<<endl;
-	 }
-
-  }
-}
-
-if(test){
-  // test RAMBO
-    for (int kpp=0;kpp<30;kpp++){
-	cout<<"packing: "<<myRambo.Rambo_array[kpp]->m_bits->getcount()<<endl;
-    }
-    chrono::time_point<chrono::high_resolution_clock> t5 = chrono::high_resolution_clock::now();
-    int keysize = 30;
-    std::vector<string> testKeys;
-    testKeys = getRandomTestKeys(keysize, 1000);
-    cout<<"loaded keys"<<endl;
-    //testKeys = getctxdata("data/SRR1792494.out");
-    float fp=0;
-    std::ofstream FPtestFile;
-    FPtestFile.open("FPtestFile5+4.txt");
-    // #pragma omp parallel for
-    for (uint i=0; i<1000; i++){
-	cout<<testKeys[i]<<endl;
-      bitArray MemVec = myRambo.query (testKeys[i], testKeys[i].size());
-
-      int gt_size = 0;
-      //fp = fp + MemVec.getcount() - gt_size;
-      //tot = tot + (4605 - gt_size);
-      cout<<MemVec.getcount() <<endl;
-      FPtestFile<<MemVec.getcount() <<endl;
-      fp = fp + (MemVec.getcount() - gt_size)*0.1/((Ki - gt_size)*0.1);
+      //serialize myRambo
+      if (ser){
+        cout<<"Serializing RAMBO at: "<< output_dir <<endl;
+        myRambo.serializeRAMBO(output_dir);
+        //for (int kpp=0;kpp<R_all*B_all;kpp++){
+          //cout<<"packing: "<< myRambo.Rambo_array[kpp]->m_bits->getcount()<<endl;
+        //}
+      }
     }
 
-    cout<<"fp rate is: "<<fp/testKeys.size();; // false positives/(all negatives)
-    fp_ops = fp/testKeys.size();;
+    if(test){
+      // test RAMBO
+        for (int kpp=0;kpp<30;kpp++){
+        cout<<"packing: "<<myRambo.Rambo_array[kpp]->m_bits->getcount()<<endl;
+        }
+        chrono::time_point<chrono::high_resolution_clock> t5 = chrono::high_resolution_clock::now();
+        int keysize = 30;
+        std::vector<string> testKeys;
+        testKeys = getRandomTestKeys(keysize, 1000);
+        cout<<"loaded keys"<<endl;
+        //testKeys = getctxdata("data/SRR1792494.out");
+        float fp=0;
+        std::ofstream FPtestFile;
+        FPtestFile.open("FPtestFile5+4.txt");
+        // #pragma omp parallel for
+        for (uint i=0; i<1000; i++){
+        cout<<testKeys[i]<<endl;
+          bitArray MemVec = myRambo.query (testKeys[i], testKeys[i].size());
 
-    cout<<endl;
-    chrono::time_point<chrono::high_resolution_clock> t6 = chrono::high_resolution_clock::now();
-    cout <<"query time:" <<chrono::duration_cast<chrono::nanoseconds>(t6-t5).count()/1000000000.0 << "sec\n";
-    query_time = (t6-t5).count()/1000000000.0;
+          int gt_size = 0;
+          //fp = fp + MemVec.getcount() - gt_size;
+          //tot = tot + (4605 - gt_size);
+          cout<<MemVec.getcount() <<endl;
+          FPtestFile<<MemVec.getcount() <<endl;
+          fp = fp + (MemVec.getcount() - gt_size)*0.1/((Ki - gt_size)*0.1);
+        }
 
-    // writeRAMBOresults("results/fp_ops.txt", numB, numR, fp_ops);
-    // writeRAMBOresults("results/ins_time.txt", numB, numR, ins_time);
-    // writeRAMBOresults("results/query_time.txt", numB, numR, query_time);
-  }
+        cout<<"fp rate is: "<<fp/testKeys.size();; // false positives/(all negatives)
+        fp_ops = fp/testKeys.size();;
 
-return 0;
+        cout<<endl;
+        chrono::time_point<chrono::high_resolution_clock> t6 = chrono::high_resolution_clock::now();
+        cout <<"query time:" <<chrono::duration_cast<chrono::nanoseconds>(t6-t5).count()/1000000000.0 << "sec\n";
+        query_time = (t6-t5).count()/1000000000.0;
+
+        // writeRAMBOresults("results/fp_ops.txt", numB, numR, fp_ops);
+        // writeRAMBOresults("results/ins_time.txt", numB, numR, ins_time);
+        // writeRAMBOresults("results/query_time.txt", numB, numR, query_time);
+      }
+
+    return 0;
 }

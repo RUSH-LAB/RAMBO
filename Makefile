@@ -1,8 +1,8 @@
 # declare variables
 
-CXX      := g++
-CXXFLAGS := -Wall -fopenmp -std=c++11 -O2
-INCLUDE  := -Iinclude/
+CXX      := g++-9
+CXXFLAGS := -Wall -fopenmp -std=c++17 -O1 -pedantic -Wall -Wextra -Wimplicit-fallthrough=0 -mavx -march=native -lstdc++fs
+INCLUDE  := -Iinclude/ -Iext/CLI11/include -Iext/spdlog/include -Iext/bit-algorithms/include -Iext/bit-algorithms/ext/bit/
 BUILD    := ./build
 TARGET   := program
 
@@ -10,7 +10,7 @@ SRC      :=                      \
 	 $(wildcard src/MurmurHash3.cpp)   \
 	 $(wildcard src/Rambo_construction.cpp) \
 	 $(wildcard src/bitArray.cpp) \
-   $(wildcard src/MyBloom.cpp)   \
+     $(wildcard src/MyBloom.cpp)   \
 	 $(wildcard src/utils.cpp)   \
 	 $(wildcard src/main.cpp)   \
 
