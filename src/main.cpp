@@ -122,12 +122,9 @@ int main(int argc, char** argv){
       }
     }
 
-    if(test){
-      // test RAMBO
-        for (int kpp=0;kpp<30;kpp++){
-        cout<<"packing: "<<myRambo.Rambo_array[kpp]->m_bits->getcount()<<endl;
-        }
-        chrono::time_point<chrono::high_resolution_clock> t5 = chrono::high_resolution_clock::now();
+    else if(app.got_subcommand("query"){
+        // test RAMBO
+        auto t5 = chrono::high_resolution_clock::now();
         int keysize = 30;
         std::vector<string> testKeys;
         testKeys = getRandomTestKeys(keysize, 1000);
