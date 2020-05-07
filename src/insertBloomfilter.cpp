@@ -9,7 +9,6 @@
 #include <string.h>
 #include <algorithm>
 #include <vector>
-#include "smhasher/src/MyBloom.h"
 using namespace std;
 
 // the code is mostly file reading
@@ -18,7 +17,7 @@ int main(){
 
     struct ConstrintBF {
     string refinement;
-    BloomFiler BF;
+    BloomFilter BF;
     } ;
 
     //get the size of Bloom filter by count

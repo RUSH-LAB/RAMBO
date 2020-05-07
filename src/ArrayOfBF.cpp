@@ -1,19 +1,6 @@
-#include <iomanip>
-#include <fstream>
-#include <iostream>
-#include <chrono>
-#include <vector>
-#include <math.h>
-#include <sstream>
-#include <string>
-#include <string.h>
-#include <algorithm>
-#include "MyBloom.h"
-#include "MurmurHash3.h"
 #include "ArrayOfBF.h"
-#include "utils.h"
-#include <set>
-#include <iterator>
+#include <math.h>
+
 using namespace std;
 
 ArBF::ArBF(int n, float fpr1, int n_sets){
@@ -25,10 +12,10 @@ ArBF::ArBF(int n, float fpr1, int n_sets){
   range = ceil(-(n*log(p))/(log(2)*log(2))); //range
   k = ceil(-log(p)/log(2)); //number of hash, k is 7 for 0.01
 
-  ArBF_array = new BloomFiler*[K]; //array of pointers
+  ArBF_array = new BloomFilter*[K]; //array of pointers
 
   for(int b=0; b<K; b++){
-      ArBF_array[b] = new BloomFiler(range, p, k);
+      ArBF_array[b] = new BloomFilter(range, p, k);
   }
 }
 
