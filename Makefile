@@ -2,7 +2,7 @@
 
 CXX      := g++-9
 CXXFLAGS := -Wall -fopenmp -std=c++17 -O1 -pedantic -Wall -Wextra -Wimplicit-fallthrough=0 -mavx -march=native -lstdc++fs
-INCLUDE  := -Iinclude/ -Iext/CLI11/include -Iext/spdlog/include -Iext/bit-algorithms/include -Iext/bit-algorithms/ext/bit/
+INCLUDE  := -Iinclude/ -Iext/CLI11/include -Iext/spdlog/include -Iext/bit/cpp/ 
 BUILD    := ./build
 TARGET   := program
 

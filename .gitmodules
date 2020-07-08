@@ -4,6 +4,6 @@
 [submodule "ext/CLI11"]
 	path = ext/CLI11
 	url = https://github.com/CLIUtils/CLI11
-[submodule "ext/bit-algorithms"]
-	path = ext/bit-algorithms
-	url = https://github.com/vreverdy/bit-algorithms
+[submodule "ext/bit"]
+	path = ext/bit
+	url = https://github.com/vreverdy/bit
