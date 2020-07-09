@@ -2,7 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include "bitArray.h"
-#include "transform.hpp"
+#include "xsimd/xsimd.hpp"
 
 using namespace std;
 
@@ -19,7 +19,7 @@ bitArray::bitArray(int size){
 void bitArray::ANDop(unsigned char* B){
   auto first1 = this->bitIt;
   auto first2 = bit::bit_iterator<unsigned char*>(B);
-  bit::transform_and(first1, first1 + this->ar_size, first2, first1);
+  //bit::transform_and(first1, first1 + this->ar_size, first2, first1);
 }
 
 void bitArray::serializeBitAr(fs::path BF_file){
