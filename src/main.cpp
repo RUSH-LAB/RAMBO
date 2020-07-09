@@ -122,7 +122,7 @@ int main(int argc, char** argv){
       }
     }
 
-    else if(app.got_subcommand("query"){
+    else if(app.got_subcommand("query")){
         // test RAMBO
         auto t5 = chrono::high_resolution_clock::now();
         int keysize = 30;
