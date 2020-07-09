@@ -7,3 +7,6 @@
 [submodule "ext/bit"]
 	path = ext/bit
 	url = https://github.com/vreverdy/bit
+[submodule "ext/xsimd"]
+	path = ext/xsimd
+	url = https://github.com/xtensor-stack/xsimd
