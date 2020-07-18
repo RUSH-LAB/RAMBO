@@ -4,9 +4,9 @@
 [submodule "ext/CLI11"]
 	path = ext/CLI11
 	url = https://github.com/CLIUtils/CLI11
-[submodule "ext/bit"]
-	path = ext/bit
-	url = https://github.com/vreverdy/bit
 [submodule "ext/xsimd"]
 	path = ext/xsimd
 	url = https://github.com/xtensor-stack/xsimd
+[submodule "ext/bit-algs"]
+	path = ext/bit-algs
+	url = https://github.com/vreverdy/bit-algorithms
