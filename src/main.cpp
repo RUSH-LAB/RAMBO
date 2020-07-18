@@ -144,7 +144,7 @@ int main(int argc, char** argv){
         for (fs::path input_f: input_files) {
             auto results = rambo.query(input_f);
             if (results.size() > 0) {
-                spdlog::info("{} not in the following files:", input_f.stem().string());
+                spdlog::info("{} found in the following files:", input_f.stem().string());
                 for (auto sample : results) {
                     std::cout << sample << " ";
                 }

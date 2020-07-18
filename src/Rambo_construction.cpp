@@ -117,7 +117,7 @@ RAMBO::RAMBO(fs::path rambo_dir){
         }
     }
     spdlog::debug("Metarambo loaded");
-    spdlog::info("Creating RAMBO index with R={}, B={}, n={}, k={}", R, B, range, k);
+    spdlog::info("Loading RAMBO index with R={}, B={}, n={}, k={}", R, B, range, k);
     spdlog::debug("Allocating memory for bloom filters...");
     Rambo_array = new BloomFilter*[B*R]; //array of pointers
     for(int b=0; b<B; b++){
@@ -127,7 +127,6 @@ RAMBO::RAMBO(fs::path rambo_dir){
     }
     spdlog::debug("Deserializing bloom filters...");
     this->deserializeRAMBO(rambo_dir);
-    spdlog::info("RAMBO index loaded!");
 }
 
 
