@@ -97,7 +97,7 @@ std::vector <std::string> gettxtdata(fs::path txtfile){
   std::vector <std::string> keys;
   std::string line;
   std::vector<std::string> values;
-  while(!txtstream.eof()) {
+  while(txtstream.good()) {
     getline(txtstream, line);
     if (line.size() > 0) {
         keys.push_back(line);
@@ -111,7 +111,7 @@ std::vector <std::string> getctxdata(fs::path ctxfile){
   std::vector <std::string> keys;
   std::string line;
   std::vector<std::string> values;
-  while(!txtstream.eof()) {
+  while(txtstream.good()) {
     getline(txtstream, line, ' ');
     if (line.size() > 0) {
         keys.push_back(line);

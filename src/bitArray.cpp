@@ -20,7 +20,8 @@ bitArray::bitArray(int size){
 void bitArray::ANDop(unsigned char* B){
   auto first1 = this->bitIt;
   auto first2 = bit::bit_iterator<unsigned char*>(B);
-  //bit::transform_and(first1, first1 + this->ar_size, first2, first1);
+  xsimd::transform(first1.base(), first1.base() + ar_size/8 + 1, first2.base(), first1.base(),
+         [](const auto& x, const auto& y) {return x & y;}); 
 }
 
 void bitArray::serializeBitAr(fs::path BF_file){

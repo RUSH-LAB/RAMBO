@@ -58,9 +58,9 @@ RAMBO::RAMBO(int n, float fpr1, int r1, int b1, std::vector<fs::path> input_file
     B = b1;
     K = input_files.size();
 
-    k = 2;
-    spdlog::info("Creating RAMBO index with R={}, B={}, n={}, k={}", R, B, range, k);
+    k = 3;
     range = n;
+    spdlog::info("Creating RAMBO index with R={}, B={}, n={}, k={}", R, B, range, k);
 
     Rambo_array = new BloomFilter*[B*R]; //array of pointers
 
@@ -153,37 +153,17 @@ void RAMBO::insertion (fs::path input_file) {
     vector<std::string> keys = getctxdata(input_file);
     #pragma omp parallel for
     for(std::size_t i=0; i<keys.size(); ++i){
-        vector<uint> temp = myhash(keys[i].c_str(), keys[i].size() , k, range);
+        vector<uint> temp = myhash(keys[i], keys[i].size() , k, range);
         for(int r=0; r<R; r++){
             this->Rambo_array[hashvals[r] + B*r]->insert(temp);
         }
     }
 }
 
-set<int> RAMBO::takeunion(set<int> set1, set<int>& set2){
-    set1.insert(set2.begin(), set2.end());
-    return set1;
-}
-
-set<int> RAMBO::takeIntrsec(set<int>* setArray){
-    set<int> s1 = setArray[0];
-    for (int i = 1; i < R; i++){
-        set<int> res;
-        set_intersection(
-            s1.begin(), 
-            s1.end(),
-            setArray[i].begin(),
-            setArray[i].end(), 
-            std::inserter(res,res.begin()));
-        //TODO is res being copied at every step?
-        s1 = std::move(res);
-    }
-    return s1;
-}
-
-bitArray RAMBO::query(string query_key, int len) {
+std::vector<std::string> RAMBO::query(std::string query_key) {
+    spdlog::debug("Query RAMBO for {}", query_key);
     bitArray bitarray_K(Ki);
-    vector<uint> check = myhash(query_key, len , k, range); //hash values correspondign to the keys
+    vector<uint> check = myhash(query_key, query_key.size(), k, range);
     for(int r=0; r<R; r++){
         bitArray bitarray_K1(Ki);
         for(int b = 0; b < B; b++) {
@@ -200,7 +180,49 @@ bitArray RAMBO::query(string query_key, int len) {
             bitarray_K.ANDop(bitarray_K1.A);
         }
     }
-    return bitarray_K;
+    std::vector<std::string> ret_samples;
+    auto it = bitarray_K.bitIt;
+    auto end = it + Ki;
+    it = std::find(it, end, bit::bit1);
+    while (it != end) {
+        ret_samples.push_back(this->idx_to_name[std::distance(bitarray_K.bitIt, it)]);
+        it = std::find(it + 1, end, bit::bit1);
+    }
+    return ret_samples;
+}
+
+std::vector<std::string> RAMBO::query(fs::path input_file) {
+    spdlog::debug("Query RAMBO for {}", input_file.string());
+    vector<std::string> keys = getctxdata(input_file);
+    bitArray bitarray_K(Ki);
+    for (auto query_key: keys) {
+        vector<uint> check = myhash(query_key, query_key.size(), k, range);
+        for(int r=0; r<R; r++){
+            bitArray bitarray_K1(Ki);
+            for(int b = 0; b < B; b++) {
+                if (Rambo_array[b + B*r]->test(check)){
+                    for (uint j=0; j<metaRambo[b + B*r].size(); j++){
+                        bitarray_K1.bitIt[metaRambo[b + B*r][j]] = bit::bit1;
+                    }
+                }
+            }
+            if (r == 0) {
+                bitarray_K = bitarray_K1;
+            }
+            else{
+                bitarray_K.ANDop(bitarray_K1.A);
+            }
+        }
+    }
+    std::vector<std::string> ret_samples;
+    auto it = bitarray_K.bitIt;
+    auto end = it + Ki;
+    it = std::find(it, end, bit::bit1);
+    while (it != end) {
+        ret_samples.push_back(this->idx_to_name[std::distance(bitarray_K.bitIt, it)]);
+        it = std::find(it + 1, end, bit::bit1);
+    }
+    return ret_samples;
 }
 
 void RAMBO::serializeRAMBO(const fs::path dir){
