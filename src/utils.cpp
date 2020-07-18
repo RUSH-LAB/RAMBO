@@ -7,6 +7,7 @@
 #include <string>
 #include <string.h>
 #include <algorithm>
+#include <filesystem>
 #include <chrono>
 #include "MyBloom.h"
 #include "MurmurHash3.h"
@@ -14,6 +15,7 @@
 #include <map>
 #include <cassert>
 using namespace std;
+namespace fs = std::filesystem;
 
 //readlines from a file
 std::vector<string> getsets( string path){
@@ -90,24 +92,33 @@ set<int> takeunion(set<int> set1, set<int> set2){
   return res;
 }
 
-std::vector <std::string> getctxdata(string filenameSet){
-  //get the size of Bloom filter by count
-  ifstream cntfile (filenameSet);
-  std::vector <std::string> allKeys;
-  int totKmerscnt = 0;
-  while ( cntfile.good() )
-      {
-          string line1;
-          while( getline ( cntfile, line1 ) ){
-	      std::vector <std::string> linesplit = line2array(line1, ' ');
-              allKeys.push_back(linesplit[0]);
-              totKmerscnt++;
+std::vector <std::string> gettxtdata(fs::path txtfile){
+  ifstream txtstream (txtfile);
+  std::vector <std::string> keys;
+  std::string line;
+  std::vector<std::string> values;
+  while(!txtstream.eof()) {
+    getline(txtstream, line);
+    if (line.size() > 0) {
+        keys.push_back(line);
+    }
+  }
+  return keys;
+}
 
-          }
-      }
-      std::cout<<"total inserted from one file"<<filenameSet<<": "<<totKmerscnt<<std::endl;
-
-      return allKeys;
+std::vector <std::string> getctxdata(fs::path ctxfile){
+  ifstream txtstream (ctxfile);
+  std::vector <std::string> keys;
+  std::string line;
+  std::vector<std::string> values;
+  while(!txtstream.eof()) {
+    getline(txtstream, line, ' ');
+    if (line.size() > 0) {
+        keys.push_back(line);
+    }
+    getline(txtstream, line);
+  }
+  return keys;
 }
 
 //num control how many lines to get
@@ -144,44 +155,44 @@ std::vector<string> getRandomTestKeys(int keysize, int n){
 return s;
 }
 
-std::map<std::string, vector<int>> makeInvIndex(int n, vector<std::string> foldernames){
-  std::map<std::string, vector<int>> m;
-  for (uint f=0; f<foldernames.size(); f++){
-    string foldername = foldernames[f];
-    for (int batch=0; batch<47; batch++){
-  	string dataPath = foldername + to_string(batch)+ "_indexed.txt";
-  	std::vector<string> setIDs = readlines(dataPath, 0);
-  	cout<<setIDs[0]<<endl;
+//std::map<std::string, vector<int>> makeInvIndex(int n, vector<std::string> foldernames){
+  //std::map<std::string, vector<int>> m;
+  //for (uint f=0; f<foldernames.size(); f++){
+    //string foldername = foldernames[f];
+    //for (int batch=0; batch<47; batch++){
+      //string dataPath = foldername + to_string(batch)+ "_indexed.txt";
+      //std::vector<string> setIDs = readlines(dataPath, 0);
+      //cout<<setIDs[0]<<endl;
 
-  	for (uint ss=0; ss<setIDs.size(); ss++){
-    	  char d = ',';
-    	  vector<std::string> setID = line2array(setIDs[ss], d);
-          string mainfile = foldername + setID[1]+ ".out";
-	  cout<<"getting keys"<<endl;
-    	  vector<std::string> keys = getctxdata(mainfile);
-    	  cout<<"gotkeys"<<endl;
+      //for (uint ss=0; ss<setIDs.size(); ss++){
+          //char d = ',';
+          //vector<std::string> setID = line2array(setIDs[ss], d);
+          //string mainfile = foldername + setID[1]+ ".out";
+	  //cout<<"getting keys"<<endl;
+          //vector<std::string> keys = getctxdata(mainfile);
+          //cout<<"gotkeys"<<endl;
 
-	  if (ss==0 && batch ==0 && f ==0){
-      		for (int i =0; i<n; i++){
-        	   m[keys[i]].push_back(std::stoi(setID[0]));
-      		}
-      	        cout<<"completed first itr"<<endl;
- 		for(map<string, vector<int> >::iterator it = m.begin(); it != m.end(); ++it){
-		   std::cout << it->first <<it->second[0]<<"\n";
-		}
-    	   }
-    	  else{
+	  //if (ss==0 && batch ==0 && f ==0){
+              //for (int i =0; i<n; i++){
+               //m[keys[i]].push_back(std::stoi(setID[0]));
+              //}
+                  //cout<<"completed first itr"<<endl;
+         //for(map<string, vector<int> >::iterator it = m.begin(); it != m.end(); ++it){
+		   //std::cout << it->first <<it->second[0]<<"\n";
+		//}
+           //}
+          //else{
 
-    		for (uint i =0; i<keys.size(); i++){
-      		   if (m.find(keys[i]) != m.end()){
-        	     std::cout << "map contains the key!\n";
-        	     m[keys[i]].push_back(std::stoi(setID[0]));
-      		   }
-    		}
-	   }
-          cout<<ss<<endl;
-  	}
-     }
-  }
-  return m;
-}
+            //for (uint i =0; i<keys.size(); i++){
+                 //if (m.find(keys[i]) != m.end()){
+                 //std::cout << "map contains the key!\n";
+                 //m[keys[i]].push_back(std::stoi(setID[0]));
+                 //}
+            //}
+	   //}
+          //cout<<ss<<endl;
+      //}
+     //}
+  //}
+  //return m;
+//}

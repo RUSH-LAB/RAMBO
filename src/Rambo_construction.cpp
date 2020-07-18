@@ -10,6 +10,8 @@
 #include <string.h>
 #include <algorithm>
 #include "Rambo_construction.h"
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/basic_file_sink.h"
 #include <set>
 #include <iterator>
 #include <bitset>
@@ -50,49 +52,105 @@ std::vector<std::string>  RAMBO::getdata(string filenameSet) {
 }
 
 
-RAMBO::RAMBO(int n, float fpr1, int r1, int b1, int K){
-  p = fpr1;
-  FPR = fpr1;
-  R = r1;
-  B = b1;
-  K = K;
+RAMBO::RAMBO(int n, float fpr1, int r1, int b1, std::vector<fs::path> input_files){
+    FPR = fpr1;
+    R = r1;
+    B = b1;
+    K = input_files.size();
 
-  //range = ceil(-(n*log(p))/(log(2)*log(2))); //range
-  range = n;
-  std::cout << "range" <<range<< '\n';
-  // range = capacity;
-  //k = ceil(-log(p)/log(2)); //number of hash, k is 7 for 0.01
-  k = 2;
+    k = 2;
+    spdlog::info("Creating RAMBO index with R={}, B={}, n={}, k={}", R, B, range, k);
+    range = n;
 
-  Rambo_array = new BloomFilter*[B*R]; //array of pointers
-  // std::vector<BloomFilter>  Rambo_array(B*R, BloomFilter(n, p, range, k));
-  metaRambo = new vector<int>[B*R]; //constains set info in it.
-  for(int b=0; b<B; b++){
-    for(int r=0; r<R; r++){
-      // Rambo_array[b + B*r] = new BloomFilter(range, p, k);
-      // std::cout << "Range is: "<<range << '\n';
-      Rambo_array[b + B*r] = new BloomFilter(range, p, k);
-    }
-  }
+    Rambo_array = new BloomFilter*[B*R]; //array of pointers
 
-}
-
-// one time process- a preprocess step
-void RAMBO::createMetaRambo(int K, bool verbose) {
-    for (int i = 0; i < K; i++) {
-        vector<uint> hashvals = RAMBO::hashfunc(
-            std::to_string(i), 
-            std::to_string(i).size()); // R hashvals, each with max value B
-        // For each repitition, put the dataset name in the assigned partition
+    metaRambo = new vector<int>[B*R]; //constains set info in it.
+    for(int b=0; b<B; b++){
         for(int r=0; r<R; r++){
-            this->metaRambo[hashvals[r] + B*r].push_back(i);
+            Rambo_array[b + B*r] = new BloomFilter(range, p, k);
         }
     }
+    spdlog::info("Inserting kmers...");
+    for (fs::path input_f: input_files) {
+        this->insertion(input_f);
+    }
 }
 
+RAMBO::RAMBO(fs::path rambo_dir){
+    string line;
+    std::ifstream idx_stream (rambo_dir / "idx_to_name.txt"); 
+    unsigned int idx = 0;
+    while (idx_stream.good()) {
+        getline(idx_stream, line);
+        if (line.size() > 0) {
+            this->name_to_idx[line] = idx;
+            this->idx_to_name.push_back(line);
+        }
+    }
+    std::ifstream meta_stream (rambo_dir / "metarambo.txt"); 
+    getline(meta_stream, line);
+    size_t pos = line.find(' ');
+    this->R = std::stoi(line.substr(0, pos));
+    line.erase(0, pos + 1);
+    pos = line.find(' ');
+    this->B = std::stoi(line.substr(0, pos));
+    line.erase(0, pos + 1);
+    pos = line.find(' ');
+    this->range = std::stoi(line.substr(0, pos));
+    line.erase(0, pos + 1);
+    pos = line.find(' ');
+    this->k = std::stoi(line.substr(0, pos));
+    this->metaRambo = new vector<int>[this->B*this->R]; //constains set info in it.
+    unsigned int r = 0;
+    unsigned int b = 0;
+    while (meta_stream.good()) {
+        getline(meta_stream, line);
+        if (line[0] == '#') {
+            line.erase(0, 2);
+            pos = line.find(' ');
+            r = std::stoi(line.substr(0, pos));
+            line.erase(0, pos + 1);
+            pos = line.find(' ');
+            b = std::stoi(line.substr(0, pos));
+        } else if (line.length() > 0) {
+            this->metaRambo[B*r + b].push_back(std::stoi(line));
+        }
+    }
+    spdlog::debug("Metarambo loaded");
+    spdlog::info("Creating RAMBO index with R={}, B={}, n={}, k={}", R, B, range, k);
+    spdlog::debug("Allocating memory for bloom filters...");
+    Rambo_array = new BloomFilter*[B*R]; //array of pointers
+    for(int b=0; b<B; b++){
+        for(int r=0; r<R; r++){
+            Rambo_array[b + B*r] = new BloomFilter(range, range, k);
+        }
+    }
+    spdlog::debug("Deserializing bloom filters...");
+    this->deserializeRAMBO(rambo_dir);
+    spdlog::info("RAMBO index loaded!");
+}
+
+
 // give set and keys in the set
-void RAMBO::insertion (std::string setID, std::vector<std::string> keys){
-    vector<uint> hashvals = RAMBO::hashfunc(setID, setID.size()); // R hashvals
+void RAMBO::insertion (fs::path input_file) {
+    auto sample_name = input_file.stem().string();
+    spdlog::debug("Inserting kmers from {}...", sample_name);
+    if (name_to_idx.find(sample_name) != name_to_idx.end()) {
+        spdlog::error("{} already in rambo index!", sample_name);
+    } else {
+        name_to_idx[sample_name] = idx_to_name.size();
+        this->idx_to_name.push_back(sample_name);
+    }
+
+    vector<uint> hashvals = RAMBO::hashfunc(
+        sample_name, 
+        sample_name.length()); // R hashvals, each with max value B
+    // For each repitition, put the dataset name in the assigned partition
+    for(int r=0; r<R; r++){
+        this->metaRambo[B*r + hashvals[r]].push_back(this->name_to_idx[sample_name]);
+    }
+
+    vector<std::string> keys = getctxdata(input_file);
     #pragma omp parallel for
     for(std::size_t i=0; i<keys.size(); ++i){
         vector<uint> temp = myhash(keys[i].c_str(), keys[i].size() , k, range);
@@ -101,28 +159,6 @@ void RAMBO::insertion (std::string setID, std::vector<std::string> keys){
         }
     }
 }
-
-//// given inverted index type arrangement, kmer;files;files;..
-//void RAMBO::insertion2 (std::vector<string> alllines, int V, int mr){
-  //// V = 10; // multiplicity = 10
-  //// merge = 5; //merging 5 rambo
-
-  ////make this loop parallel
-  //// #pragma omp parallel for
-  //for(std::size_t i=0; i<alllines.size(); ++i){
-    //char d = ';';
-    //std::vector<string>KeySets =  line2array(alllines[i], d);//sets for a key
-    //vector<uint> temp = myhash(KeySets[0].c_str(), KeySets[0].size() , k, range);// i is the key
-
-    //std::vector<string>KeySet = line2array(KeySets[mr], ',');
-    //for (int j = 0; j<V; j++){
-      //vector<uint> hashvals = RAMBO::hashfunc(KeySet[j], KeySet[j].size()); // R hashvals
-      //for(int r=0; r<R; r++){
-        //Rambo_array[hashvals[r] + B*r]->insert(temp);
-      //}
-    //}
-  //}
-//}
 
 set<int> RAMBO::takeunion(set<int> set1, set<int>& set2){
     set1.insert(set2.begin(), set2.end());
@@ -140,25 +176,21 @@ set<int> RAMBO::takeIntrsec(set<int>* setArray){
             setArray[i].end(), 
             std::inserter(res,res.begin()));
         //TODO is res being copied at every step?
-        s1 = res;
+        s1 = std::move(res);
     }
     return s1;
 }
 
 bitArray RAMBO::query(string query_key, int len) {
     bitArray bitarray_K(Ki);
-    float count=0.0;
     vector<uint> check = myhash(query_key, len , k, range); //hash values correspondign to the keys
     for(int r=0; r<R; r++){
         bitArray bitarray_K1(Ki);
         for(int b = 0; b < B; b++) {
             if (Rambo_array[b + B*r]->test(check)){
-                auto t5 = chrono::high_resolution_clock::now();
                 for (uint j=0; j<metaRambo[b + B*r].size(); j++){
                     bitarray_K1.bitIt[metaRambo[b + B*r][j]] = bit::bit1;
                 }
-                auto t6 = chrono::high_resolution_clock::now();
-                count += ((t6-t5).count()/1000000000.0);
             }
         }
         if (r == 0) {
@@ -171,27 +203,37 @@ bitArray RAMBO::query(string query_key, int len) {
     return bitarray_K;
 }
 
-// TODO more freedom for naming/saving... 
-
 void RAMBO::serializeRAMBO(const fs::path dir){
+    spdlog::info("Saving RAMBO to {}", dir.string());
     std::filesystem::create_directories(dir);
-    std::cout << dir << std::endl;
-    for(int b=0; b<B; b++){
-        for(int r=0; r<R; r++){
-            fs::path br = dir / fs::path("repitition_" + to_string(r) + "_group" + to_string(r) + ".txt");
-            Rambo_array[b + B*r]->serializeBF(br);
+    std::ofstream meta_idx(dir / "idx_to_name.txt");
+    for (auto p : this->idx_to_name) {
+        meta_idx << p << std::endl;
+    } std::cout << std::endl;
+    meta_idx.close();
+    std::ofstream meta_out(dir / "metarambo.txt");
+    meta_out << R << " " << B << " " << this->range << " " << this->k << std::endl;
+    for(int r=0; r<R; r++){
+        auto rep_dir = dir / fs::path("repitition_" + std::to_string(r));
+        std::filesystem::create_directories(rep_dir);
+        for(int b=0; b<B; b++){
+            auto bloom_filter_path = rep_dir / fs::path("filter_" + std::to_string(b) + ".bloom");
+            Rambo_array[b + B*r]->serializeBF(bloom_filter_path);
+            meta_out << "# " << r << " " << b << std::endl;
+            for (auto sample_idx : this->metaRambo[B*r + b]) {
+                meta_out << sample_idx << std::endl;
+            }
         }
     }
+    meta_out.close();
 }
 
-void RAMBO::deserializeRAMBO(vector<fs::path> dir){
-    for(int b=0; b<B; b++){
-        for(int r=0; r<R; r++){
-            vector<fs::path> br;
-            for (uint j=0; j<dir.size(); j++){
-                br.push_back(dir[j] / fs::path("repitition_" + to_string(r) + "_group" + to_string(r) + ".txt"));
-            }
-            Rambo_array[b + B*r]->deserializeBF(br);
+void RAMBO::deserializeRAMBO(fs::path dir){
+    for(int r=0; r<R; r++){
+        auto rep_dir = dir / fs::path("repitition_" + std::to_string(r));
+        for(int b=0; b<B; b++){
+            auto bloom_filter_path = rep_dir / fs::path("filter_" + std::to_string(b) + ".bloom");
+            Rambo_array[b + B*r]->deserializeBF(bloom_filter_path);
         }
     }
 }

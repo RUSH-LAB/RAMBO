@@ -47,6 +47,6 @@ void BloomFilter::serializeBF(fs::path BF_file){
   this->m_bits->serializeBitAr(BF_file);
 }
 
-void BloomFilter::deserializeBF(vector<fs::path> BF_file){
+void BloomFilter::deserializeBF(fs::path BF_file){
   this->m_bits->deserializeBitAr(BF_file);
 }

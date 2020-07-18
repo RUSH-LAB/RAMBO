@@ -17,7 +17,7 @@ class BloomFilter{
         void insert(std::vector<uint> a);
         bool test(std::vector<uint> a);
         void serializeBF(fs::path BF_file);
-        void deserializeBF(std::vector<fs::path> BF_file);
+        void deserializeBF(fs::path BF_file);
 
         // void serialize1(std::string BF_file);
 
