@@ -14,6 +14,7 @@ void writeRAMBOresults(std::string path, int rows, int cols, float* values);
 std::vector<int>  arrayunion(std::vector<int> &v1, std::vector<int> &v2);
 std::vector<int> arrayintersection(std::vector<int> &v1, std::vector<int> &v2);
 std::set<int> takeunion(std::set<int> set1, std::set<int> set2);
+std::vector <std::string> get_kmers(fs::path filenameSet);
 std::vector <std::string> getctxdata(fs::path filenameSet);
 std::vector <std::string> gettxtdata(fs::path filenameSet);
 std::vector<std::string> readlines( std::string path, int num);

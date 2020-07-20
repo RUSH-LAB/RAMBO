@@ -149,7 +149,7 @@ void RAMBO::insertion (fs::path input_file) {
         this->metaRambo[B*r + hashvals[r]].push_back(this->name_to_idx[sample_name]);
     }
 
-    vector<std::string> keys = getctxdata(input_file);
+    vector<std::string> keys = get_kmers(input_file);
     #pragma omp parallel for
     for(std::size_t i=0; i<keys.size(); ++i){
         vector<uint> temp = myhash(keys[i], keys[i].size() , k, range);

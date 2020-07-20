@@ -12,6 +12,7 @@
 #include "MyBloom.h"
 #include "MurmurHash3.h"
 #include "utils.h"
+#include "spdlog/spdlog.h"
 #include <map>
 #include <cassert>
 using namespace std;
@@ -92,6 +93,35 @@ set<int> takeunion(set<int> set1, set<int> set2){
   return res;
 }
 
+std::string exec(const char* cmd) {
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
+}
+
+std::vector<std::string> get_kmers(const fs::path input_file) {
+    auto ext = input_file.extension().string();
+    vector<std::string> keys;
+    if (ext == ".ctx") {
+        keys = getctxdata(input_file);
+    } else if (ext == ".txt" || ext == ".out") {
+        keys = gettxtdata(input_file);
+    } else if (ext == ".fna" || ext == ".fasta" || ext == ".fa" || ext == ".ffn") {
+        // TODO
+    } else {
+        spdlog::warn("File extension {} not recognized! Defaulting to .txt format", ext);
+        keys = gettxtdata(input_file);
+    }  
+    return keys;
+}
+
 std::vector <std::string> gettxtdata(fs::path txtfile){
   ifstream txtstream (txtfile);
   std::vector <std::string> keys;
@@ -99,6 +129,8 @@ std::vector <std::string> gettxtdata(fs::path txtfile){
   std::vector<std::string> values;
   while(txtstream.good()) {
     getline(txtstream, line);
+    std::stringstream line_stream(line);
+    getline(line_stream, line, ' ');
     if (line.size() > 0) {
         keys.push_back(line);
     }
@@ -107,18 +139,12 @@ std::vector <std::string> gettxtdata(fs::path txtfile){
 }
 
 std::vector <std::string> getctxdata(fs::path ctxfile){
-  ifstream txtstream (ctxfile);
-  std::vector <std::string> keys;
-  std::string line;
-  std::vector<std::string> values;
-  while(txtstream.good()) {
-    getline(txtstream, line, ' ');
-    if (line.size() > 0) {
-        keys.push_back(line);
-    }
-    getline(txtstream, line);
-  }
-  return keys;
+    std::vector<std::string> keys;
+    auto cortexpy_out = exec((
+        "cortexpy view graph " + ctxfile.string() + " > " + (fs::temp_directory_path() / ctxfile.stem()).string()
+    ).c_str());
+    keys = gettxtdata(fs::temp_directory_path() / ctxfile.stem());
+    return keys;
 }
 
 //num control how many lines to get
