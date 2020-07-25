@@ -4,7 +4,7 @@
 # third is bug report address
 AC_INIT([rambo], [1.0])
 
-INCLUDE_FLAGS="-I../include/ -I../ext/CLI11/include -I../ext/spdlog/include -I../ext/bit-algs/include -I../ext/bit-algs/ext/bit -I../ext/xsimd/include"
+INCLUDE_FLAGS="-I../include/ -I../ext/cpptqdm/ -I../ext/CLI11/include -I../ext/spdlog/include -I../ext/bit-algs/include -I../ext/bit-algs/ext/bit -I../ext/xsimd/include"
 AC_SUBST(INCLUDE_FLAGS)
 
 # Store the auxiliary build tools (e.g., install-sh, config.sub, config.guess)
