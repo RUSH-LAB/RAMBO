@@ -2,7 +2,6 @@
 #define _MYBLOOM_
 #include <filesystem>
 #include <vector>
-#include "constants.h"
 #include <bitset>
 #include "bitArray.h"
 

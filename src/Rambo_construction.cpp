@@ -1,4 +1,5 @@
 #include <iomanip>
+#include <unordered_set>
 #include <fstream>
 #include <filesystem>
 #include <iostream>
@@ -12,6 +13,7 @@
 #include "Rambo_construction.h"
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h"
+#include "tqdm.h"
 #include <set>
 #include <iterator>
 #include <bitset>
@@ -140,7 +142,9 @@ void RAMBO::insertion (fs::path input_file) {
         name_to_idx[sample_name] = idx_to_name.size();
         this->idx_to_name.push_back(sample_name);
     }
+    vector<std::string> keys = get_kmers(input_file);
 
+    std::
     vector<uint> hashvals = RAMBO::hashfunc(
         sample_name, 
         sample_name.length()); // R hashvals, each with max value B
@@ -149,7 +153,6 @@ void RAMBO::insertion (fs::path input_file) {
         this->metaRambo[B*r + hashvals[r]].push_back(this->name_to_idx[sample_name]);
     }
 
-    vector<std::string> keys = get_kmers(input_file);
     #pragma omp parallel for
     for(std::size_t i=0; i<keys.size(); ++i){
         vector<uint> temp = myhash(keys[i], keys[i].size() , k, range);
@@ -161,10 +164,11 @@ void RAMBO::insertion (fs::path input_file) {
 
 std::vector<std::string> RAMBO::query(std::string query_key) {
     spdlog::debug("Query RAMBO for {}", query_key);
-    bitArray bitarray_K(Ki);
+    auto begin_time = std::chrono::high_resolution_clock::now();
+    bitArray bitarray_K(this->range);
     vector<uint> check = myhash(query_key, query_key.size(), k, range);
     for(int r=0; r<R; r++){
-        bitArray bitarray_K1(Ki);
+        bitArray bitarray_K1(this->range);
         for(int b = 0; b < B; b++) {
             if (Rambo_array[b + B*r]->test(check)){
                 for (uint j=0; j<metaRambo[b + B*r].size(); j++){
@@ -181,23 +185,30 @@ std::vector<std::string> RAMBO::query(std::string query_key) {
     }
     std::vector<std::string> ret_samples;
     auto it = bitarray_K.bitIt;
-    auto end = it + Ki;
-    it = std::find(it, end, bit::bit1);
-    while (it != end) {
-        ret_samples.push_back(this->idx_to_name[std::distance(bitarray_K.bitIt, it)]);
-        it = std::find(it + 1, end, bit::bit1);
+    it = bit::find(it, bitarray_K.end, bit::bit1);
+    while (it != bitarray_K.end) {
+        ret_samples.push_back(this->idx_to_name[bit::distance(bitarray_K.bitIt, it)]);
+        it = bit::find(it + 1, bitarray_K.end, bit::bit1);
     }
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto total_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time-begin_time).count();
+    spdlog::debug("Query took {} milliseconds", total_time);
+
     return ret_samples;
 }
 
-std::vector<std::string> RAMBO::query(fs::path input_file) {
-    spdlog::debug("Query RAMBO for {}", input_file.string());
-    vector<std::string> keys = getctxdata(input_file);
-    bitArray bitarray_K(Ki);
+std::vector<std::string> RAMBO::query_full_file(fs::path input_file, bool show_progress) {
+    bitArray bitarray_K(this->range);
+    vector<std::string> keys = get_kmers(input_file);
+    bool is_init = false;
+    tqdm bar;
+    unsigned int prog_i = 0;
     for (auto query_key: keys) {
+        if (show_progress) 
+            bar.progress(prog_i++, keys.size());
         vector<uint> check = myhash(query_key, query_key.size(), k, range);
         for(int r=0; r<R; r++){
-            bitArray bitarray_K1(Ki);
+            bitArray bitarray_K1(this->range);
             for(int b = 0; b < B; b++) {
                 if (Rambo_array[b + B*r]->test(check)){
                     for (uint j=0; j<metaRambo[b + B*r].size(); j++){
@@ -205,23 +216,48 @@ std::vector<std::string> RAMBO::query(fs::path input_file) {
                     }
                 }
             }
-            if (r == 0) {
+            if (!is_init) {
                 bitarray_K = bitarray_K1;
+                is_init = true;
             }
             else{
                 bitarray_K.ANDop(bitarray_K1.A);
             }
         }
+        if (bitarray_K.empty()) {
+            break;
+        }
     }
+    bar.finish();
     std::vector<std::string> ret_samples;
     auto it = bitarray_K.bitIt;
-    auto end = it + Ki;
-    it = std::find(it, end, bit::bit1);
-    while (it != end) {
+    it = std::find(it, bitarray_K.end, bit::bit1);
+    while (it != bitarray_K.end) {
         ret_samples.push_back(this->idx_to_name[std::distance(bitarray_K.bitIt, it)]);
-        it = std::find(it + 1, end, bit::bit1);
+        it = std::find(it + 1, bitarray_K.end, bit::bit1);
     }
     return ret_samples;
+}
+
+std::vector<std::string> RAMBO::query_kmers(fs::path input_file) {
+    spdlog::debug("Query RAMBO for kmers in {}", input_file.string());
+    vector<std::string> keys = get_kmers(input_file);
+    vector<std::string> ret;
+    auto ret_samples = std::unordered_set<std::string>();
+    for (auto query_key : keys) {
+        auto results = query(query_key);
+        if (results.size() > 0) {
+            spdlog::info("{} found in the following samples:", query_key);
+            for (auto sample : results) {
+                std::cout << sample << " ";
+            }
+            std::cout << std::endl;
+        } else {
+            spdlog::info("{} not found in database!", query_key);
+        }
+    }
+    ret.insert(ret.end(), ret_samples.begin(), ret_samples.end());
+    return ret;
 }
 
 void RAMBO::serializeRAMBO(const fs::path dir){

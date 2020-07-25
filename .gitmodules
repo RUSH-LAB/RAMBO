@@ -10,3 +10,6 @@
 [submodule "ext/bit-algs"]
 	path = ext/bit-algs
 	url = https://github.com/vreverdy/bit-algorithms
+[submodule "ext/cpptqdm"]
+	path = ext/cpptqdm
+	url = https://github.com/aminnj/cpptqdm

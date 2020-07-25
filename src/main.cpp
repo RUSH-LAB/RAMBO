@@ -15,13 +15,12 @@
 #include "CLI/Validators.hpp"
 #include "spdlog/spdlog.h"
 #include "CLI/CLI.hpp"
+#include "tqdm.h"
 #include "bitArray.h"
 #include "MyBloom.h"
-#include "ArrayOfBF.h"
 #include "MurmurHash3.h"
 #include "Rambo_construction.h"
 #include "utils.h"
-#include "constants.h"
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -35,9 +34,10 @@ int main(int argc, char** argv){
     app.require_subcommand(1, 1);
     CLI::App* build_sub = app.add_subcommand("build", "Build database")->fallthrough();
     std::vector<fs::path> input_files;
-    std::vector<fs::path> input_kmers;
+    fs::path input_kmers_file = "";
     fs::path output_dir("output");
     bool verbose;
+    bool show_progress;
     unsigned int num_threads = 1;
 
     // Generic flags
@@ -45,6 +45,11 @@ int main(int argc, char** argv){
             "-v,--verbose",
             verbose,
             "Display debug output"
+    );
+    app.add_flag(
+            "--show-progress",
+            show_progress,
+            "Display progress bars"
     );
     app.add_option(
             "-p,--threads",
@@ -99,16 +104,17 @@ int main(int argc, char** argv){
 
     // Query flags
     CLI::App* query_sub = app.add_subcommand("query", "Check if query is in database")->fallthrough();
-    auto input_file_opt = query_sub->add_option(
-            "-i,--input-files",
-            input_files,
-            "Input files. For each file, RAMBO will check if database contains any entries which are a superset of the input file."
-    )->check(CLI::ExistingFile);
+    bool flatten_input = false;
     query_sub->add_option(
-            "-k,--input-kmers",
-            input_kmers,
-            "Input kmers. For each kmer, RAMBO will check if database contains any entries which contain the kmer"
-    )->excludes(input_file_opt);
+            "input-files",
+            input_files,
+            "Input files. For each file, RAMBO will check if database contains any entries which are a superset of the input file. Use the --flatten flag if each kmer should be treated independently"
+    )->check(CLI::ExistingFile);
+    query_sub->add_flag(
+            "-f,--flatten",
+            flatten_input,
+            "Treat each kmer from each input file as an individual sample"
+    );
     query_sub->add_option(
             "-d,--database",
             database_dir,
@@ -122,7 +128,6 @@ int main(int argc, char** argv){
      */
     spdlog::set_level(verbose ? spdlog::level::debug : spdlog::level::info); // Set global log level to debug
     omp_set_num_threads(num_threads);
-
 
     /*
      *Main workflow
@@ -141,21 +146,25 @@ int main(int argc, char** argv){
     } else if(app.got_subcommand("query")){
         RAMBO rambo(database_dir);
         spdlog::info("Querying RAMBO index...");
-        for (fs::path input_f: input_files) {
-            auto results = rambo.query(input_f);
-            if (results.size() > 0) {
-                spdlog::info("{} found in the following files:", input_f.stem().string());
-                for (auto sample : results) {
-                    std::cout << sample << " ";
+        if (flatten_input) {
+            for (fs::path input_f: input_files) {
+                rambo.query(input_f);
+            }
+        } else {
+            for (fs::path input_f: input_files) {
+                auto results = rambo.query_full_file(input_f, show_progress);
+                if (results.size() > 0) {
+                    spdlog::info("{} found in the following samples:", input_f.stem().string());
+                    for (auto sample : results) {
+                        std::cout << sample << " ";
+                    }
+                    std::cout << std::endl;
+                } else {
+                    spdlog::info("{} not found in database!", input_f.stem().string());
                 }
-                std::cout << std::endl;
-            } else {
-                spdlog::info("{} not found in database!", input_f.stem().string());
             }
         }
         
     }
-
-
     return 0;
 }

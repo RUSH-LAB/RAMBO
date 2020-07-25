@@ -17,8 +17,10 @@ class bitArray{
         int getcount();
         void serializeBitAr(fs::path BF_file);
         void deserializeBitAr(fs::path BF_file);
+        bool empty();
         unsigned char *A;
         bit::bit_iterator<unsigned char*> bitIt;
+        bit::bit_iterator<unsigned char*> end;
         int ar_size;
 };
 

@@ -5,7 +5,6 @@
 #include <vector>
 #include <math.h>
 #include "MyBloom.h"
-#include "constants.h"
 
 using namespace std;
 

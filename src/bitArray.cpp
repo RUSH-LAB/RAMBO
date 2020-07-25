@@ -11,6 +11,7 @@ bitArray::bitArray(int size){
     this->ar_size = size;
     this->A = new unsigned char[ar_size/8 +1];
     this->bitIt = bit::bit_iterator<unsigned char*>(A);
+    this->end = this->bitIt + ar_size;
     for (int i = 0; i < (ar_size/8 + 1); i++) {
         A[i] = 0; // Clear the bit array
     }
@@ -22,6 +23,10 @@ void bitArray::ANDop(unsigned char* B){
   auto first2 = bit::bit_iterator<unsigned char*>(B);
   xsimd::transform(first1.base(), first1.base() + ar_size/8 + 1, first2.base(), first1.base(),
          [](const auto& x, const auto& y) {return x & y;}); 
+}
+
+bool bitArray::empty() {
+    return bit::find(this->bitIt, this->end, bit::bit1) == this->end;
 }
 
 void bitArray::serializeBitAr(fs::path BF_file){
