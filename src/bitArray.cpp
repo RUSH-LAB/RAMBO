@@ -42,7 +42,7 @@ void bitArray::serializeBitAr(fs::path BF_file){
 }
 
 int bitArray::getcount() {
-    return bit::count(this->bitIt, this->bitIt + this->ar_size, bit::bit1);
+    return bit::count(this->bitIt, this->end, bit::bit1);
 }
 
 // TODO why does deserializing combine repititions...?
