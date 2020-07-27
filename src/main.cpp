@@ -36,8 +36,8 @@ int main(int argc, char** argv){
     std::vector<fs::path> input_files;
     fs::path input_kmers_file = "";
     fs::path output_dir("output");
-    bool verbose;
-    bool show_progress;
+    bool verbose = false;
+    bool show_progress = false;
     unsigned int num_threads = 1;
 
     // Generic flags
