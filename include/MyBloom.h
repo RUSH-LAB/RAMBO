@@ -7,7 +7,7 @@
 
 namespace fs = std::filesystem;
 
-std::vector<uint> myhash(std::string key, int len, int k, int range);
+std::vector<uint> myhash(std::string key, int len, int k, int range, int seed);
 
 class BloomFilter{
     public:
