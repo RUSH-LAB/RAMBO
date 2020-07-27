@@ -148,7 +148,7 @@ int main(int argc, char** argv){
         spdlog::info("Querying RAMBO index...");
         if (flatten_input) {
             for (fs::path input_f: input_files) {
-                rambo.query(input_f);
+                rambo.query_kmers(input_f);
             }
         } else {
             for (fs::path input_f: input_files) {
