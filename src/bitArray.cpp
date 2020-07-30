@@ -9,8 +9,8 @@ using namespace std;
 
 bitArray::bitArray(int size){
     this->ar_size = size;
-    this->A = new unsigned char[ar_size/8 +1];
-    this->bitIt = bit::bit_iterator<unsigned char*>(A);
+    this->A = std::vector<unsigned char>(ar_size/8 +1);
+    this->bitIt = bit::bit_iterator<unsigned char*>(&(*A.begin()));
     this->end = this->bitIt + ar_size;
     for (int i = 0; i < (ar_size/8 + 1); i++) {
         A[i] = 0; // Clear the bit array
@@ -37,7 +37,7 @@ void bitArray::serializeBitAr(fs::path BF_file){
       spdlog::critical("Cannot open {}", BF_file.string());
       exit(1);
   }
-  out.write(reinterpret_cast<char*>(A), ar_size/8 +1);
+  out.write(reinterpret_cast<char*>(&(*A.begin())), ar_size/8 +1);
   out.close();
 }
 
@@ -52,6 +52,6 @@ void bitArray::deserializeBitAr(fs::path BF_file){
       spdlog::critical("Cannot open {}", BF_file.string());
       exit(1);
     }
-    in.read((char *) A, ar_size/8 +1); //optimise it
+    in.read((char *) (&(*A.begin())), ar_size/8 +1); //optimise it
     in.close();
 }

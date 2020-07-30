@@ -14,7 +14,7 @@ vector<uint> myhash( std::string key, int len, int k, int range, int seed){
   uint op; // takes 4 byte
 
   for (int i=0; i<k; i++){
-    MurmurHash3_x86_32(key.c_str(), len, i*seed, &op);
+    MurmurHash3_x86_32(key.c_str(), len, i + (seed*range), &op);
     hashvals.push_back(op%range);
   }
   return hashvals;
@@ -35,7 +35,9 @@ void BloomFilter::insert(vector<uint> a){
 bool BloomFilter::test(vector<uint> a) {
   int N = a.size();
   for (int n =0 ; n<N; n++){
-      if (this->m_bits->bitIt[a[n]] == bit::bit0){
+      auto arr = this->m_bits->bitIt;
+      auto idx = a[n];
+      if (arr[idx] == bit::bit0){
         return false;
       }
   }

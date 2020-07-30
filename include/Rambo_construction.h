@@ -47,6 +47,7 @@ class RAMBO{
         std::vector<int>* metaRambo;
         std::unordered_map<std::string, int> name_to_idx;
         std::vector<std::string> idx_to_name;
+        std::vector<std::vector<unsigned int>> idx_and_r_to_b;
 };
 
 #endif

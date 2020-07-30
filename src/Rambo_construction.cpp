@@ -30,30 +30,6 @@ vector<uint> RAMBO::hashfunc(std::string key, int len) {
   return hashvals;
 }
 
-//TODO shouldn't this be a set?
-std::vector<std::string>  RAMBO::getdata(string filenameSet) {
-    //get the size of Bloom filter by count
-    ifstream cntfile (filenameSet);
-    std::vector <std::string> allKeys;
-    int totKmerscnt = 0;
-    while (cntfile.good()) {
-        string line1, vals;
-        while (getline(cntfile, line1)) {
-            stringstream is;
-            is << line1;
-            if (line1[0] != '>' && line1.size() > 30) {
-                for (uint idx = 0; idx < line1.size() - 31 + 1; idx++) {
-                    allKeys.push_back(line1.substr(idx, 31));
-                    totKmerscnt++;
-                }
-            }
-        }
-    }
-    std::cout<<"total inserted from one file: "<<totKmerscnt<<std::endl;
-    return allKeys;
-}
-
-
 RAMBO::RAMBO(int n, float fpr1, int r1, int b1, std::vector<fs::path> input_files){
     FPR = fpr1;
     R = r1;
@@ -99,6 +75,7 @@ RAMBO::RAMBO(fs::path rambo_dir){
         if (line.size() > 0) {
             this->name_to_idx[line] = idx;
             this->idx_to_name.push_back(line);
+            this->idx_and_r_to_b.push_back(std::vector<unsigned int>());
         }
     }
     std::ifstream meta_stream (rambo_dir / "metarambo.txt"); 
@@ -128,6 +105,7 @@ RAMBO::RAMBO(fs::path rambo_dir){
             b = std::stoi(line.substr(0, pos));
         } else if (line.length() > 0) {
             this->metaRambo[B*r + b].push_back(std::stoi(line));
+            this->idx_and_r_to_b[std::stoi(line)].push_back(b); // Assumes everything is in order
         }
     }
     spdlog::debug("Metarambo loaded");
@@ -147,20 +125,25 @@ RAMBO::RAMBO(fs::path rambo_dir){
 // give set and keys in the set
 void RAMBO::insertion (fs::path input_file) {
     auto sample_name = input_file.stem().string();
+    std::vector<unsigned int> hashvals;
     #pragma omp critical 
     {
         if (name_to_idx.find(sample_name) != name_to_idx.end()) {
             spdlog::error("{} already in rambo index!", sample_name);
-        } else {
+        } else { 
+            hashvals = RAMBO::hashfunc(
+                sample_name, 
+                sample_name.length()); // R hashvals, each with max value B
             name_to_idx[sample_name] = idx_to_name.size();
             this->idx_to_name.push_back(sample_name);
+            this->idx_and_r_to_b.push_back(hashvals);
         }
+    }
+    if (hashvals.empty()) {
+        return;
     }
     vector<std::string> keys = get_kmers(input_file);
 
-    std::vector<uint> hashvals = RAMBO::hashfunc(
-        sample_name, 
-        sample_name.length()); // R hashvals, each with max value B
     // For each repitition, put the dataset name in the assigned partition
     for(int r=0; r<R; r++){
         this->metaRambo[B*r + hashvals[r]].push_back(this->name_to_idx[sample_name]);
@@ -175,50 +158,117 @@ void RAMBO::insertion (fs::path input_file) {
     }
 }
 
+//std::vector<std::string> RAMBO::query(std::string query_key) {
+    //spdlog::debug("Query RAMBO for {}", query_key);
+    //auto begin_time = std::chrono::high_resolution_clock::now();
+    //std::set<unsigned int> hits;
+    //vector<uint> check = myhash(query_key, query_key.size(), k, range, 1);
+    //for(int b = 0; b < B; b++) {
+        //if (Rambo_array[b]->test(check)){
+            //for (uint j=0; j<metaRambo[b].size(); j++){
+                //hits.insert(metaRambo[b][j]);
+            //}
+        //}
+    //}
+    //for(int r=1; r<R; r++){
+        //if (hits.empty()) {
+            //break;
+        //}
+        //std::set<unsigned int> rep_hits;
+        //int hit_count = 0;
+        //vector<uint> check = myhash(query_key, query_key.size(), k, range, r+1);
+        //for(int b = 0; b < B; b++) {
+            //if (Rambo_array[b + B*r]->test(check)){
+                //++hit_count;
+                //for (uint j=0; j<metaRambo[b + B*r].size(); j++){
+                    //rep_hits.insert(metaRambo[b + B*r][j]);
+                //}
+            //}
+        //}
+        ////std::cout << "BFs hit " << hit_count << std::endl;
+        ////std::cout << "Potential_hits: " << hits.size() << std::endl;
+        ////std::cout << "Rep hits: " << rep_hits.size() << std::endl;
+        //std::set<unsigned int> temp_set;
+        //std::set_intersection(hits.begin(), hits.end(), rep_hits.begin(), rep_hits.end(), std::inserter(temp_set, temp_set.end())); 
+        //std::swap(temp_set, hits);
+    //}
+        ////std::cout << "Potential_hits: " << hits.size() << std::endl;
+
+    //std::vector<std::string> ret_samples;
+    //for (unsigned int idx: hits) {
+        //ret_samples.push_back(this->idx_to_name[idx]);
+    //}
+    //auto end_time = std::chrono::high_resolution_clock::now();
+    //auto total_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time-begin_time).count();
+    //spdlog::debug("Query took {} microseconds", total_time);
+
+    //return ret_samples;
+//}
+
 std::vector<std::string> RAMBO::query(std::string query_key) {
-    spdlog::debug("Query RAMBO for {}", query_key);
     auto begin_time = std::chrono::high_resolution_clock::now();
-    std::set<unsigned int> hits;
+    bitArray bitarray_K(this->idx_to_name.size());
+    bool is_init = false;
+    //for(int r=0; r<R; r++){
+        //vector<uint> check = myhash(query_key, query_key.size(), k, range, r+1);
+        //bitArray bitarray_K1(this->idx_to_name.size());
+        //for(int b = 0; b < B; b++) {
+            //if (Rambo_array[b + B*r]->test(check)){
+                //for (uint j=0; j<metaRambo[b + B*r].size(); j++){
+                    //bitarray_K1.bitIt[metaRambo[b + B*r][j]] = bit::bit1;
+                //}
+            //}
+        //}
+        //if (!is_init) {
+            //bitarray_K = std::move(bitarray_K1);
+            //is_init = true;
+        //}
+        //else{
+            //bitarray_K.ANDop(&*bitarray_K1.A.begin());
+        //}
+    //}
     vector<uint> check = myhash(query_key, query_key.size(), k, range, 1);
+    bitArray bitarray_K1(this->idx_to_name.size());
+    std::set<unsigned int> to_check_next;
     for(int b = 0; b < B; b++) {
         if (Rambo_array[b]->test(check)){
-            for (uint j=0; j<metaRambo[b].size(); j++){
-                hits.insert(metaRambo[b][j]);
+            for (auto idx: metaRambo[b]) {
+                to_check_next.insert(this->idx_and_r_to_b[idx][1]);
+                bitarray_K.bitIt[idx] = bit::bit1;
             }
         }
     }
     for(int r=1; r<R; r++){
-        if (hits.empty()) {
-            break;
-        }
-        std::set<unsigned int> rep_hits;
-        int hit_count = 0;
+        std::set<unsigned int> to_check = to_check_next;
+        to_check_next.clear();
         vector<uint> check = myhash(query_key, query_key.size(), k, range, r+1);
-        for(int b = 0; b < B; b++) {
+        bitArray bitarray_K1(this->idx_to_name.size());
+        for(auto b: to_check) {
             if (Rambo_array[b + B*r]->test(check)){
-                ++hit_count;
-                for (uint j=0; j<metaRambo[b + B*r].size(); j++){
-                    rep_hits.insert(metaRambo[b + B*r][j]);
+                for (auto idx: metaRambo[b + B*r]) {
+                    if (r < R - 1) {
+                        to_check_next.insert(this->idx_and_r_to_b[idx][r + 1]);
+                    }
+                    bitarray_K1.bitIt[idx] = bit::bit1;
                 }
             }
         }
-        //std::cout << "BFs hit " << hit_count << std::endl;
-        //std::cout << "Potential_hits: " << hits.size() << std::endl;
-        //std::cout << "Rep hits: " << rep_hits.size() << std::endl;
-        std::set<unsigned int> temp_set;
-        std::set_intersection(hits.begin(), hits.end(), rep_hits.begin(), rep_hits.end(), std::inserter(temp_set, temp_set.end())); 
-        std::swap(temp_set, hits);
-    }
-        //std::cout << "Potential_hits: " << hits.size() << std::endl;
-
-    std::vector<std::string> ret_samples;
-    for (unsigned int idx: hits) {
-        ret_samples.push_back(this->idx_to_name[idx]);
+        
+        bitarray_K.ANDop(&*bitarray_K1.A.begin());
     }
     auto end_time = std::chrono::high_resolution_clock::now();
     auto total_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time-begin_time).count();
     spdlog::debug("Query took {} microseconds", total_time);
-
+    std::vector<std::string> ret_samples;
+    auto it = bitarray_K.bitIt;
+    it = bit::find(it, bitarray_K.end, bit::bit1);
+    while (it != bitarray_K.end) {
+        ret_samples.push_back(this->idx_to_name[bit::distance(bitarray_K.bitIt, it)]);
+        it = bit::find(it + 1, bitarray_K.end, bit::bit1);
+    }
+    end_time = std::chrono::high_resolution_clock::now();
+    total_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time-begin_time).count();
+    spdlog::debug("Query took {} microseconds", total_time);
     return ret_samples;
 }
 
@@ -232,7 +282,7 @@ std::vector<std::string> RAMBO::query_full_file(fs::path input_file, bool show_p
         if (show_progress) 
             bar.progress(prog_i++, keys.size());
         for(int r=0; r<R; r++){
-            vector<uint> check = myhash(query_key, query_key.size(), k, range, r);
+            vector<uint> check = myhash(query_key, query_key.size(), k, range, r+1);
             bitArray bitarray_K1(this->range);
             for(int b = 0; b < B; b++) {
                 if (Rambo_array[b + B*r]->test(check)){
@@ -242,11 +292,11 @@ std::vector<std::string> RAMBO::query_full_file(fs::path input_file, bool show_p
                 }
             }
             if (!is_init) {
-                bitarray_K = bitarray_K1;
+                bitarray_K = std::move(bitarray_K1);
                 is_init = true;
             }
             else{
-                bitarray_K.ANDop(bitarray_K1.A);
+                bitarray_K.ANDop(&*bitarray_K1.A.begin());
             }
         }
         if (bitarray_K.empty()) {
