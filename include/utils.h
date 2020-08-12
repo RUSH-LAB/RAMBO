@@ -21,4 +21,5 @@ std::vector<std::string> readlines( std::string path, int num);
 std::vector<std::string> getRandomTestKeys(int keysize, int n);
 std::map<std::string, std::vector<int>> makeInvIndex(int n, std::vector<std::string> foldernames);
 
+std::string sjoin(std::vector<std::string>);
 #endif

@@ -13,3 +13,6 @@
 [submodule "ext/cpptqdm"]
 	path = ext/cpptqdm
 	url = https://github.com/aminnj/cpptqdm
+[submodule "ext/xxhash_cpp"]
+	path = ext/xxhash_cpp
+	url = https://github.com/RedSpah/xxhash_cpp

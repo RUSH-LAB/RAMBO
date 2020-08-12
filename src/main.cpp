@@ -35,7 +35,8 @@ int main(int argc, char** argv){
     CLI::App* build_sub = app.add_subcommand("build", "Build database")->fallthrough();
     std::vector<fs::path> input_files;
     fs::path input_kmers_file = "";
-    fs::path output_dir("output");
+    fs::path database_output_dir("database_dir");
+    fs::path query_output_prefix("query");
     bool verbose = false;
     bool show_progress = false;
     unsigned int num_threads = 1;
@@ -69,7 +70,7 @@ int main(int argc, char** argv){
     )->required()->check(CLI::ExistingFile);
     build_sub->add_option(
             "-o,--output",
-            output_dir,
+            database_output_dir,
             "Directory to store serialized output"
     );
     build_sub->add_option(
@@ -110,16 +111,21 @@ int main(int argc, char** argv){
             input_files,
             "Input files. For each file, RAMBO will check if database contains any entries which are a superset of the input file. Use the --flatten flag if each kmer should be treated independently"
     )->check(CLI::ExistingFile);
-    query_sub->add_flag(
-            "-f,--flatten",
-            flatten_input,
-            "Treat each kmer from each input file as an individual sample"
-    );
+    //query_sub->add_flag(
+            //"-f,--flatten",
+            //flatten_input,
+            //"Treat each kmer from each input file as an individual sample"
+    //);
     query_sub->add_option(
             "-d,--database",
             database_dir,
             "Path to RAMBO database directory"
     )->required()->check(CLI::ExistingDirectory);
+    query_sub->add_option(
+            "-o,--output",
+            query_output_prefix,
+            "Prefix to TSV output file. Results will be stored at <prefix>_results.tsv"
+    );
 
     CLI11_PARSE(app, argc, argv);
 
@@ -135,35 +141,55 @@ int main(int argc, char** argv){
     if (app.got_subcommand("build")) {
         // constructor
         RAMBO myRambo(n_per_set, FPR, R_all, B_all, input_files);
-        myRambo.serializeRAMBO(output_dir);
+        myRambo.serializeRAMBO(database_output_dir);
     } else if (app.got_subcommand("insert")) {
         RAMBO rambo(database_dir);
         spdlog::info("Inserting kmers...");
-        for (fs::path input_f: input_files) {
-            rambo.insertion(input_f);
-        }
-        rambo.serializeRAMBO(database_dir);
-    } else if(app.got_subcommand("query")){
-        RAMBO rambo(database_dir);
-        spdlog::info("Querying RAMBO index...");
-        if (flatten_input) {
-            for (fs::path input_f: input_files) {
-                rambo.query_kmers(input_f);
-            }
-        } else {
-            for (fs::path input_f: input_files) {
-                auto results = rambo.query_full_file(input_f, show_progress);
-                if (results.size() > 0) {
-                    spdlog::info("{} found in the following samples:", input_f.stem().string());
-                    for (auto sample : results) {
-                        std::cout << sample << " ";
+        tqdm bar;
+        unsigned int prog_i = 0;
+        #pragma omp parallel
+        {
+            #pragma omp for schedule(dynamic)
+            for (unsigned int i = 0; i < input_files.size(); ++i) {
+                auto input_f = input_files[i];
+                rambo.insertion(input_f);
+                if (show_progress) {
+                    #pragma omp critical
+                    {
+                        prog_i += 1;
+                        bar.progress(prog_i, input_files.size());
                     }
-                    std::cout << std::endl;
-                } else {
-                    spdlog::info("{} not found in database!", input_f.stem().string());
                 }
             }
         }
+        bar.finish();
+        rambo.serializeRAMBO(database_dir);
+    } else if(app.got_subcommand("query")){
+        fs::path output_file = fs::path(query_output_prefix.string() + "_results.tsv");
+        RAMBO rambo(database_dir);
+        spdlog::info("Querying RAMBO index...");
+        for (fs::path input_f: input_files) {
+            rambo.query_kmers(input_f, output_file);
+        }
+        // Implement once fasta support is added
+        //if (flatten_input) {
+            //for (fs::path input_f: input_files) {
+                //rambo.query_kmers(input_f, output_file);
+            //}
+        //} else {
+            //for (fs::path input_f: input_files) {
+                //auto results = rambo.query_full_file(input_f, show_progress);
+                //if (results.size() > 0) {
+                    //spdlog::info("{} found in the following samples:", input_f.stem().string());
+                    //for (auto sample : results) {
+                        //std::cout << sample << " ";
+                    //}
+                    //std::cout << std::endl;
+                //} else {
+                    //spdlog::info("{} not found in database!", input_f.stem().string());
+                //}
+            //}
+        //}
         
     }
     return 0;

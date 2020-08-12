@@ -72,3 +72,14 @@ std::vector <std::string> getctxdata(fs::path ctxfile){
     return keys;
 }
 
+std::string sjoin(std::vector<std::string> v) {
+    std::stringstream ss;
+    for(size_t i = 0; i < v.size(); ++i)
+    {
+      if(i != 0)
+        ss << "\t";
+      ss << v[i];
+    }
+    std::string s = ss.str();
+    return s;
+}

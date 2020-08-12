@@ -4,6 +4,8 @@
 #include <filesystem>
 #include <iostream>
 #include <chrono>
+#include <time.h>
+#include <unordered_map>
 #include <vector>
 #include <math.h>
 #include <sstream>
@@ -14,18 +16,17 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h"
 #include "tqdm.h"
+#include "xxhash.hpp"
 #include <set>
 #include <iterator>
 #include <bitset>
 
 using namespace std;
 
-vector<uint> RAMBO::hashfunc(std::string key, int len) {
+vector<uint> RAMBO::hashfunc(const std::string key, int len) {
   vector <uint> hashvals;
-  uint op; // takes 4 byte
   for (int i = 0; i < R; i++) {
-    MurmurHash3_x86_32(key.c_str(), len, i, &op); //seed i
-    hashvals.push_back(op % B);
+    hashvals.push_back(xxh::xxhash<64>(key, i) % B);
   }
   return hashvals;
 }
@@ -49,12 +50,14 @@ RAMBO::RAMBO(int n, float fpr1, int r1, int b1, std::vector<fs::path> input_file
         }
     }
     spdlog::info("Inserting kmers...");
+    //TODO make progress here optional
     tqdm bar;
     unsigned int prog_i = 0;
     #pragma omp parallel
     {
         #pragma omp for schedule(dynamic)
-        for (fs::path input_f: input_files) {
+        for (unsigned int i = 0; i < input_files.size(); ++i) {
+            auto input_f = input_files[i];
             this->insertion(input_f);
             #pragma omp critical
             {
@@ -149,7 +152,6 @@ void RAMBO::insertion (fs::path input_file) {
         this->metaRambo[B*r + hashvals[r]].push_back(this->name_to_idx[sample_name]);
     }
 
-    //#pragma omp parallel for
     for(std::size_t i=0; i<keys.size(); ++i){
         for(int r=0; r<R; r++){
             vector<uint> temp = myhash(keys[i], keys[i].size() , k, range, r);
@@ -159,19 +161,24 @@ void RAMBO::insertion (fs::path input_file) {
 }
 
 std::vector<std::string> RAMBO::query(std::string query_key) {
-    auto begin_time = std::chrono::high_resolution_clock::now();
     bitArray bitarray_K(this->idx_to_name.size());
-    vector<uint> check = myhash(query_key, query_key.size(), k, range, 1);
+    vector<uint> check = myhash(query_key, query_key.size(), k, range, 0);
     bitArray bitarray_K1(this->idx_to_name.size());
     std::set<unsigned int> to_check_next;
+    auto bf_hit_count = 0;
+    auto potential_sample_count = 0;
     for(int b = 0; b < B; b++) {
         if (Rambo_array[b]->test(check)){
             for (auto idx: metaRambo[b]) {
                 to_check_next.insert(this->idx_and_r_to_b[idx][1]);
                 bitarray_K.bitIt[idx] = bit::bit1;
             }
+            bf_hit_count += 1;
         }
     }
+    potential_sample_count = bitarray_K.getcount();
+    std::cout << "0: BFs hit=" << bf_hit_count << "\t sample_count=" << potential_sample_count << "\t\t\t";
+    bf_hit_count = 0;
     for(int r=1; r<R; r++){
         std::set<unsigned int> to_check = to_check_next;
         to_check_next.clear();
@@ -185,10 +192,13 @@ std::vector<std::string> RAMBO::query(std::string query_key) {
                     }
                     bitarray_K1.bitIt[idx] = bit::bit1;
                 }
+                bf_hit_count += 1;
             }
         }
         bitarray_K.ANDop(&*bitarray_K1.A.begin());
     }
+    potential_sample_count = bitarray_K.getcount();
+    std::cout << "1: BFs hit=" << bf_hit_count << "\t sample_count=" << potential_sample_count << '\n';
     std::vector<std::string> ret_samples;
     auto it = bitarray_K.bitIt;
     it = bit::find(it, bitarray_K.end, bit::bit1);
@@ -196,9 +206,6 @@ std::vector<std::string> RAMBO::query(std::string query_key) {
         ret_samples.push_back(this->idx_to_name[bit::distance(bitarray_K.bitIt, it)]);
         it = bit::find(it + 1, bitarray_K.end, bit::bit1);
     }
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto total_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time-begin_time).count();
-    spdlog::debug("Query took {} microseconds", total_time);
     return ret_samples;
 }
 
@@ -244,23 +251,28 @@ std::vector<std::string> RAMBO::query_full_file(fs::path input_file, bool show_p
     return ret_samples;
 }
 
-std::vector<std::string> RAMBO::query_kmers(fs::path input_file) {
-    spdlog::debug("Query RAMBO for kmers in {}", input_file.string());
+std::vector<std::string> RAMBO::query_kmers(fs::path input_file, fs::path output_file) {
     vector<std::string> keys = get_kmers(input_file);
     vector<std::string> ret;
     auto ret_samples = std::unordered_set<std::string>();
+    double cumulative_time = 0;
+    ofstream results_stream;
+    results_stream.open(output_file);
     for (auto query_key : keys) {
+        auto begin_time = clock();
         auto results = query(query_key);
+        auto end_time = clock();
+        cumulative_time += double(end_time - begin_time) / CLOCKS_PER_SEC;
+        results_stream << query_key;
         if (results.size() > 0) {
-            spdlog::info("{} found in {} samples:", query_key, results.size());
-            //for (auto sample : results) {
-                //std::cout << sample << " ";
-            //}
-            //std::cout << std::endl;
+            spdlog::debug("{} found in {} samples:", query_key, results.size());
+            results_stream << "\t" << sjoin(results) << '\n';
         } else {
-            spdlog::info("{} not found in database!", query_key);
+            spdlog::debug("{} not found in database!", query_key);
+            results_stream << '\n';
         }
     }
+    spdlog::info("Time per query = {}", cumulative_time / keys.size() * 1000000);
     ret.insert(ret.end(), ret_samples.begin(), ret_samples.end());
     return ret;
 }

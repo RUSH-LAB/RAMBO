@@ -165,8 +165,8 @@ am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in \
 	$(top_srcdir)/config/config.sub \
 	$(top_srcdir)/config/install-sh $(top_srcdir)/config/ltmain.sh \
 	$(top_srcdir)/config/missing config/compile \
-	config/config.guess config/config.sub config/install-sh \
-	config/ltmain.sh config/missing
+	config/config.guess config/config.sub config/depcomp \
+	config/install-sh config/ltmain.sh config/missing
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -223,8 +223,8 @@ CCDEPMODE = depmode=gcc3
 CFLAGS = -g -O2
 CPP = gcc -E
 CPPFLAGS = 
-CXX = g++-9
-CXXCPP = g++-9 -E
+CXX = g++-8
+CXXCPP = g++-8 -E
 CXXDEPMODE = depmode=gcc3
 CXXFLAGS = -g -O2
 CYGPATH_W = echo
@@ -240,7 +240,7 @@ EGREP = /bin/grep -E
 EXEEXT = 
 FGREP = /bin/grep -F
 GREP = /bin/grep
-INCLUDE_FLAGS = -I../include/ -I../ext/cpptqdm/ -I../ext/CLI11/include -I../ext/spdlog/include -I../ext/bit-algs/include -I../ext/bit-algs/ext/bit -I../ext/xsimd/include
+INCLUDE_FLAGS = -I../include/ -I../ext/xxhash_cpp/include -I../ext/cpptqdm/ -I../ext/CLI11/include -I../ext/spdlog/include -I../ext/bit-algs/include -I../ext/bit-algs/ext/bit -I../ext/xsimd/include
 INSTALL = /home/software/miniconda3/bin/install -c
 INSTALL_DATA = ${INSTALL} -m 644
 INSTALL_PROGRAM = ${INSTALL}
@@ -275,7 +275,7 @@ PATH_SEPARATOR = :
 RANLIB = ranlib
 SED = /bin/sed
 SET_MAKE = 
-SHELL = /bin/bash
+SHELL = /bin/sh
 STRIP = strip
 VERSION = 1.0
 abs_builddir = /home/Users/blk6/Contribute/RAMBO

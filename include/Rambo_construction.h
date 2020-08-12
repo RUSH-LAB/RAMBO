@@ -27,7 +27,7 @@ class RAMBO{
         std::set<int> takeunion(std::set<int> set1, std::set<int>& set2);
         std::set<int> takeIntrsec(std::set<int>* setArray);
         std::vector <std::string> getdata(std::string filenameSet);
-        std::vector<std::string> query_kmers (fs::path input_file);
+        std::vector<std::string> query_kmers (fs::path input_file, fs::path output_file);
         std::vector<std::string> query_full_file (fs::path input_file, bool show_progress);
         std::vector<std::string> query (std::string kmer);
         void createMetaRambo(std::vector<fs::path> input_files);
