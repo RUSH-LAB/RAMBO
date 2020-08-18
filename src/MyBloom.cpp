@@ -1,4 +1,3 @@
-#include "MurmurHash3.h"
 #include <iostream>
 #include <cstring>
 #include <chrono>
@@ -9,10 +8,10 @@
 
 using namespace std;
 
-vector<uint> myhash( std::string key, int len, int k, int range, int seed){
+vector<unsigned int> myhash( std::string key, int len, int k, int range, int seed){
   // int hashvals[k];
-  vector <uint> hashvals;
-  //uint op; // takes 4 byte
+  vector <unsigned int> hashvals;
+  //unsigned int op; // takes 4 byte
 
   for (int i=0; i<k; i++){
     //MurmurHash3_x86_32(key.c_str(), len, i + (seed*k), &op);
@@ -26,7 +25,7 @@ BloomFilter::BloomFilter(int sz, float FPR, int _k) : p(FPR), k(_k){
       this->m_bits = new bitArray(sz);
 }
 
-void BloomFilter::insert(vector<uint> a){
+void BloomFilter::insert(vector<unsigned int> a){
   int N = a.size();
   for (int n =0 ; n<N; n++){
     this->m_bits->bitIt[a[n]] = bit::bit1;
@@ -34,7 +33,7 @@ void BloomFilter::insert(vector<uint> a){
 }
 
 //TODO theres gotta be a better way for this
-bool BloomFilter::test(vector<uint> a) {
+bool BloomFilter::test(vector<unsigned int> a) {
   int N = a.size();
   for (int n =0 ; n<N; n++){
       auto arr = this->m_bits->bitIt;

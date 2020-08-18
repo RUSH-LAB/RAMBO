@@ -18,7 +18,6 @@
 #include "tqdm.h"
 #include "bitArray.h"
 #include "MyBloom.h"
-#include "MurmurHash3.h"
 #include "Rambo_construction.h"
 #include "utils.h"
 
@@ -84,9 +83,9 @@ int main(int argc, char** argv){
             "Number of bloom filters per repitition"
     );
     build_sub->add_option(
-            "-n, --set-cardinality",
+            "-n, --bloom-size",
             n_per_set,
-            "Approximate number of elements per set"
+            "Size of each bloom filter (in bits)"
     );
 
     // Insert flags

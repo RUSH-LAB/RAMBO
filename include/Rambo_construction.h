@@ -8,21 +8,15 @@
 #include "MyBloom.h"
 #include "utils.h"
 #include "bitArray.h"
-#include "MurmurHash3.h"
 
 namespace fs = std::filesystem;
-
-
-
-// vector<uint> hashfunc( void* key, int len, int R, int B){
-// }
 
 class RAMBO{
     public:
 
         RAMBO(int n, float fpr1, int r1, int b1, std::vector<fs::path> input_files);
         RAMBO(fs::path rambo_dir);
-        std::vector<uint> hashfunc( std::string key, int len);
+        std::vector<unsigned int> hashfunc( std::string key, int len);
         void insertion (fs::path input_file);
         std::set<int> takeunion(std::set<int> set1, std::set<int>& set2);
         std::set<int> takeIntrsec(std::set<int>* setArray);
