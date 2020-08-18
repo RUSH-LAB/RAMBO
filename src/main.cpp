@@ -6,156 +6,190 @@
 #include <string>
 #include <string.h>
 #include <algorithm>
+#include <omp.h>
 #include <chrono>
 #include <list>
 #include <vector>
 #include <filesystem>
+#include "CLI/App.hpp"
+#include "CLI/Validators.hpp"
 #include "spdlog/spdlog.h"
 #include "CLI/CLI.hpp"
+#include "tqdm.h"
 #include "bitArray.h"
 #include "MyBloom.h"
-#include "ArrayOfBF.h"
-#include "MurmurHash3.h"
 #include "Rambo_construction.h"
 #include "utils.h"
-#include "constants.h"
 
 using namespace std;
 namespace fs = std::filesystem;
 
 
 int main(int argc, char** argv){
+    /*
+     *Command line parsing
+     */
     CLI::App app{"RAMBO application"};
-    CLI::App* build_sub = app.add_subcommand("build", "Build database");
+    app.require_subcommand(1, 1);
+    CLI::App* build_sub = app.add_subcommand("build", "Build database")->fallthrough();
     std::vector<fs::path> input_files;
-    fs::path output_dir;
+    fs::path input_kmers_file = "";
+    fs::path database_output_dir("database_dir");
+    fs::path query_output_prefix("query");
+    bool verbose = false;
+    bool show_progress = false;
+    unsigned int num_threads = 1;
+
+    // Generic flags
+    app.add_flag(
+            "-v,--verbose",
+            verbose,
+            "Display debug output"
+    );
+    app.add_flag(
+            "--show-progress",
+            show_progress,
+            "Display progress bars"
+    );
+    app.add_option(
+            "-p,--threads",
+            num_threads,
+            "Number of threads to use"
+    );
+    
+    // Build flags
+    int n_per_set = 100000000; //cardinality of each set
+    float FPR = 0.01;
+    int R_all = 10;
+    int B_all = 50;
     build_sub->add_option(
             "input-files",
             input_files,
             "Input files"
-    )->required();
+    )->required()->check(CLI::ExistingFile);
     build_sub->add_option(
             "-o,--output",
-            output_dir,
+            database_output_dir,
             "Directory to store serialized output"
-    )->required();
+    );
+    build_sub->add_option(
+            "-R, --repitions",
+            R_all,
+            "Number of repititions in RAMBO index"
+    );
+    build_sub->add_option(
+            "-B, --blooms-per-rep",
+            B_all,
+            "Number of bloom filters per repitition"
+    );
+    build_sub->add_option(
+            "-n, --bloom-size",
+            n_per_set,
+            "Size of each bloom filter (in bits)"
+    );
 
-    CLI::App* query_sub = app.add_subcommand("query", "Check if query is in database");
+    // Insert flags
+    CLI::App* insert_sub = app.add_subcommand("insert", "Insert samples into database")->fallthrough();
+    fs::path database_dir;
+    insert_sub->add_option(
+            "input-files",
+            input_files,
+            "Input files"
+    )->required()->check(CLI::ExistingFile);
+    insert_sub->add_option(
+            "-d,--database",
+            database_dir,
+            "Path to RAMBO database directory"
+    )->required()->check(CLI::ExistingDirectory);
+
+    // Query flags
+    CLI::App* query_sub = app.add_subcommand("query", "Check if query is in database")->fallthrough();
+    bool flatten_input = false;
     query_sub->add_option(
             "input-files",
             input_files,
-            "Input files"
+            "Input files. For each file, RAMBO will check if database contains any entries which are a superset of the input file. Use the --flatten flag if each kmer should be treated independently"
+    )->check(CLI::ExistingFile);
+    //query_sub->add_flag(
+            //"-f,--flatten",
+            //flatten_input,
+            //"Treat each kmer from each input file as an individual sample"
+    //);
+    query_sub->add_option(
+            "-d,--database",
+            database_dir,
+            "Path to RAMBO database directory"
+    )->required()->check(CLI::ExistingDirectory);
+    query_sub->add_option(
+            "-o,--output",
+            query_output_prefix,
+            "Prefix to TSV output file. Results will be stored at <prefix>_results.tsv"
     );
 
     CLI11_PARSE(app, argc, argv);
-    string job = "0";
 
-    bool ser = true;
-    bool test = false;
-    bool deser = false;
+    /*
+     *Constants and assertions 
+     */
+    spdlog::set_level(verbose ? spdlog::level::debug : spdlog::level::info); // Set global log level to debug
+    omp_set_num_threads(num_threads);
 
-    int n_perSet = 500000000; //cardinality of each set
-    float FPR = 0.01;
-    int R_all = 5;
-    int B_all = 500;
-
-    int K = Ki; // total number of sets
-
-    float fp_ops;
-    float ins_time;
-    float query_time;
-
-    // constructor
-    RAMBO myRambo(n_perSet, FPR, R_all, B_all, K);
-
-    //  details of RAMBO set partitioning
-    myRambo.createMetaRambo(K, false);
-    cout<<"created meta"<<endl;
-
-    //insert itno RAMBO
-    string SerOpFile ="results/RAMBO_Ser" + job + '/';
-
-    //if (deser){
-      //vector<string> SerOpFile2;
-      //SerOpFile2.push_back("results/RAMBO_Ser4/"); // mutliple files can be pushed here
-
-      //cout<<"deser starting"<<endl;
-      //myRambo.deserializeRAMBO(SerOpFile2);
-      //std::cout << "desealized!" << '\n';
-    //}
-
+    /*
+     *Main workflow
+     */
     if (app.got_subcommand("build")) {
-      //log files
-      std::ofstream failedFiles;
-      failedFiles.open("logFileB500R5_"+job+".txt");
-
-      for (std::string input_f: input_files) {
-        auto t3 = chrono::high_resolution_clock::now();
-        std::vector<string> setIDs = readlines(input_f, 0);
-
-        for (uint ss = 0; ss < setIDs.size(); ss++){
-          char d = ',';
-          vector<std::string> setID = line2array(setIDs[ss], d);
-          string mainfile = "data/"+ job +"/inflated/" + setID[1]+ ".out";
-          vector<std::string> keys = getctxdata(mainfile);
-          failedFiles<<mainfile<<" : "<<keys.size()<<std::endl;
-
-          if (keys.size()==0){
-              std::cout<<mainfile<<" does not exists or empty "<<std::endl;
-              failedFiles<<mainfile<<" does not exists or empty "<<std::endl;
-          }
-          myRambo.insertion(setID[0], keys);
+        // constructor
+        RAMBO myRambo(n_per_set, FPR, R_all, B_all, input_files);
+        myRambo.serializeRAMBO(database_output_dir);
+    } else if (app.got_subcommand("insert")) {
+        RAMBO rambo(database_dir);
+        spdlog::info("Inserting kmers...");
+        tqdm bar;
+        unsigned int prog_i = 0;
+        #pragma omp parallel
+        {
+            #pragma omp for schedule(dynamic)
+            for (unsigned int i = 0; i < input_files.size(); ++i) {
+                auto input_f = input_files[i];
+                rambo.insertion(input_f);
+                if (show_progress) {
+                    #pragma omp critical
+                    {
+                        prog_i += 1;
+                        bar.progress(prog_i, input_files.size());
+                    }
+                }
+            }
         }
-        auto t4 = chrono::high_resolution_clock::now();
-        cout << chrono::duration_cast<chrono::nanoseconds>(t4-t3).count()/1000000000.0 << "sec\n";
-        ins_time = (t4-t3).count()/1000000000.0;
-        failedFiles << "insertion time (sec) "<< ins_time << endl;
-      }
-
-      //serialize myRambo
-      if (ser){
-        cout<<"Serializing RAMBO at: "<< output_dir <<endl;
-        myRambo.serializeRAMBO(output_dir);
-        //for (int kpp=0;kpp<R_all*B_all;kpp++){
-          //cout<<"packing: "<< myRambo.Rambo_array[kpp]->m_bits->getcount()<<endl;
+        bar.finish();
+        rambo.serializeRAMBO(database_dir);
+    } else if(app.got_subcommand("query")){
+        fs::path output_file = fs::path(query_output_prefix.string() + "_results.tsv");
+        RAMBO rambo(database_dir);
+        spdlog::info("Querying RAMBO index...");
+        for (fs::path input_f: input_files) {
+            rambo.query_kmers(input_f, output_file);
+        }
+        // Implement once fasta support is added
+        //if (flatten_input) {
+            //for (fs::path input_f: input_files) {
+                //rambo.query_kmers(input_f, output_file);
+            //}
+        //} else {
+            //for (fs::path input_f: input_files) {
+                //auto results = rambo.query_full_file(input_f, show_progress);
+                //if (results.size() > 0) {
+                    //spdlog::info("{} found in the following samples:", input_f.stem().string());
+                    //for (auto sample : results) {
+                        //std::cout << sample << " ";
+                    //}
+                    //std::cout << std::endl;
+                //} else {
+                    //spdlog::info("{} not found in database!", input_f.stem().string());
+                //}
+            //}
         //}
-      }
-    } else if (app.got_subcommand("query")) {
-        // test RAMBO
-        auto t5 = chrono::high_resolution_clock::now();
-        int keysize = 30;
-        std::vector<string> testKeys;
-        testKeys = getRandomTestKeys(keysize, 1000);
-        cout<<"loaded keys"<<endl;
-        //testKeys = getctxdata("data/SRR1792494.out");
-        float fp=0;
-        std::ofstream FPtestFile;
-        FPtestFile.open("FPtestFile5+4.txt");
-        // #pragma omp parallel for
-        for (uint i=0; i<1000; i++){
-        cout<<testKeys[i]<<endl;
-          bitArray MemVec = myRambo.query (testKeys[i], testKeys[i].size());
-
-          int gt_size = 0;
-          //fp = fp + MemVec.getcount() - gt_size;
-          //tot = tot + (4605 - gt_size);
-          cout<<MemVec.getcount() <<endl;
-          FPtestFile<<MemVec.getcount() <<endl;
-          fp = fp + (MemVec.getcount() - gt_size)*0.1/((Ki - gt_size)*0.1);
-        }
-
-        cout<<"fp rate is: "<<fp/testKeys.size();; // false positives/(all negatives)
-        fp_ops = fp/testKeys.size();;
-
-        cout<<endl;
-        chrono::time_point<chrono::high_resolution_clock> t6 = chrono::high_resolution_clock::now();
-        cout <<"query time:" <<chrono::duration_cast<chrono::nanoseconds>(t6-t5).count()/1000000000.0 << "sec\n";
-        query_time = (t6-t5).count()/1000000000.0;
-
-        // writeRAMBOresults("results/fp_ops.txt", numB, numR, fp_ops);
-        // writeRAMBOresults("results/ins_time.txt", numB, numR, ins_time);
-        // writeRAMBOresults("results/query_time.txt", numB, numR, query_time);
-      }
-
+        
+    }
     return 0;
 }

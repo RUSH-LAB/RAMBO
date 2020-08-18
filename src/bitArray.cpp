@@ -2,14 +2,16 @@
 #include <iostream>
 #include <fstream>
 #include "bitArray.h"
-#include "transform.hpp"
+#include "spdlog/spdlog.h"
+#include "xsimd/xsimd.hpp"
 
 using namespace std;
 
 bitArray::bitArray(int size){
     this->ar_size = size;
-    this->A = new unsigned char[ar_size/8 +1];
-    this->bitIt = bit::bit_iterator<unsigned char*>(A);
+    this->A = std::vector<unsigned char>(ar_size/8 +1);
+    this->bitIt = bit::bit_iterator<unsigned char*>(&(*A.begin()));
+    this->end = this->bitIt + ar_size;
     for (int i = 0; i < (ar_size/8 + 1); i++) {
         A[i] = 0; // Clear the bit array
     }
@@ -19,7 +21,12 @@ bitArray::bitArray(int size){
 void bitArray::ANDop(unsigned char* B){
   auto first1 = this->bitIt;
   auto first2 = bit::bit_iterator<unsigned char*>(B);
-  bit::transform_and(first1, first1 + this->ar_size, first2, first1);
+  xsimd::transform(first1.base(), first1.base() + ar_size/8 + 1, first2.base(), first1.base(),
+         [](const auto& x, const auto& y) {return x & y;}); 
+}
+
+bool bitArray::empty() {
+    return bit::find(this->bitIt, this->end, bit::bit1) == this->end;
 }
 
 void bitArray::serializeBitAr(fs::path BF_file){
@@ -27,40 +34,24 @@ void bitArray::serializeBitAr(fs::path BF_file){
   out.open(BF_file);
 
   if(! out){
-    cout<<"Cannot open output file\n";
+      spdlog::critical("Cannot open {}", BF_file.string());
+      exit(1);
   }
-  out.write(reinterpret_cast<char*>(A), ar_size/8 +1);
-    out.close();
+  out.write(reinterpret_cast<char*>(&(*A.begin())), ar_size/8 +1);
+  out.close();
 }
 
 int bitArray::getcount() {
-    return bit::count(this->bitIt, this->bitIt + this->ar_size, bit::bit1);
+    return bit::count(this->bitIt, this->end, bit::bit1);
 }
 
 // TODO why does deserializing combine repititions...?
-void bitArray::deserializeBitAr(std::vector<fs::path> BF_file){
-  for(uint j =0; j<BF_file.size(); j++){
-    char* C;
-    C = new char[ar_size/8 +1];
-    ifstream in(BF_file[j]);
-
+void bitArray::deserializeBitAr(fs::path BF_file){
+    ifstream in(BF_file);
     if(! in){
-      cout<<"Cannot open input file\n";
+      spdlog::critical("Cannot open {}", BF_file.string());
+      exit(1);
     }
-
-    in.read(C,ar_size/8 +1); //optimise it
-
-    if (j == 0){
-      for (int i=0; i<(ar_size/8 +1); i++ ){
-        A[i] = C[i];
-      }
-    }
-    else{
-      for (int i=0; i<(ar_size/8 +1); i++ ){
-        A[i] |= C[i];
-      }
-    }
+    in.read((char *) (&(*A.begin())), ar_size/8 +1); //optimise it
     in.close();
-    delete[] C;
-  }
 }

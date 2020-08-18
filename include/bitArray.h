@@ -16,9 +16,11 @@ class bitArray{
         void ANDop(unsigned char* B);
         int getcount();
         void serializeBitAr(fs::path BF_file);
-        void deserializeBitAr(std::vector<fs::path> BF_file);
-        unsigned char *A;
+        void deserializeBitAr(fs::path BF_file);
+        bool empty();
+        std::vector<unsigned char> A;
         bit::bit_iterator<unsigned char*> bitIt;
+        bit::bit_iterator<unsigned char*> end;
         int ar_size;
 };
 
