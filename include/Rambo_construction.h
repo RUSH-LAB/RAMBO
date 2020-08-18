@@ -8,17 +8,8 @@
 #include "MyBloom.h"
 #include "utils.h"
 #include "bitArray.h"
-#include "MurmurHash3.h"
 
 namespace fs = std::filesystem;
-
-
-namespace fs = std::filesystem;
-
-
-
-// vector<unsigned int> hashfunc( void* key, int len, int R, int B){
-// }
 
 class RAMBO{
     public:
