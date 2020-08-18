@@ -8,7 +8,6 @@
 #include "MyBloom.h"
 #include "utils.h"
 #include "bitArray.h"
-#include "MurmurHash3.h"
 
 namespace fs = std::filesystem;
 
