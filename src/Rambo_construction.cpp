@@ -23,8 +23,8 @@
 
 using namespace std;
 
-vector<uint> RAMBO::hashfunc(const std::string key, int len) {
-  vector <uint> hashvals;
+vector<unsigned int> RAMBO::hashfunc(const std::string key, int len) {
+  vector <unsigned int> hashvals;
   for (int i = 0; i < R; i++) {
     hashvals.push_back(xxh::xxhash<64>(key, i) % B);
   }
@@ -154,7 +154,7 @@ void RAMBO::insertion (fs::path input_file) {
 
     for(std::size_t i=0; i<keys.size(); ++i){
         for(int r=0; r<R; r++){
-            vector<uint> temp = myhash(keys[i], keys[i].size() , k, range, r);
+            vector<unsigned int> temp = myhash(keys[i], keys[i].size() , k, range, r);
             this->Rambo_array[hashvals[r] + B*r]->insert(temp);
         }
     }
@@ -162,7 +162,7 @@ void RAMBO::insertion (fs::path input_file) {
 
 std::vector<std::string> RAMBO::query(std::string query_key) {
     bitArray bitarray_K(this->idx_to_name.size());
-    vector<uint> check = myhash(query_key, query_key.size(), k, range, 0);
+    vector<unsigned int> check = myhash(query_key, query_key.size(), k, range, 0);
     bitArray bitarray_K1(this->idx_to_name.size());
     std::set<unsigned int> to_check_next;
     auto bf_hit_count = 0;
@@ -182,7 +182,7 @@ std::vector<std::string> RAMBO::query(std::string query_key) {
     for(int r=1; r<R; r++){
         std::set<unsigned int> to_check = to_check_next;
         to_check_next.clear();
-        vector<uint> check = myhash(query_key, query_key.size(), k, range, r);
+        vector<unsigned int> check = myhash(query_key, query_key.size(), k, range, r);
         bitArray bitarray_K1(this->idx_to_name.size());
         for(auto b: to_check) {
             if (Rambo_array[b + B*r]->test(check)){
@@ -219,11 +219,11 @@ std::vector<std::string> RAMBO::query_full_file(fs::path input_file, bool show_p
         if (show_progress) 
             bar.progress(prog_i++, keys.size());
         for(int r=0; r<R; r++){
-            vector<uint> check = myhash(query_key, query_key.size(), k, range, r);
+            vector<unsigned int> check = myhash(query_key, query_key.size(), k, range, r);
             bitArray bitarray_K1(this->range);
             for(int b = 0; b < B; b++) {
                 if (Rambo_array[b + B*r]->test(check)){
-                    for (uint j=0; j<metaRambo[b + B*r].size(); j++){
+                    for (unsigned int j=0; j<metaRambo[b + B*r].size(); j++){
                         bitarray_K1.bitIt[metaRambo[b + B*r][j]] = bit::bit1;
                     }
                 }
